@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, Zap, ArrowLeft, Eye, EyeOff, RefreshCw, Search } from 'lucide-react';
+import { MapPin, Zap, ArrowLeft, Eye, EyeOff, RefreshCw, Search, Navigation, Loader2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { toast } from 'sonner';
 
@@ -12,13 +12,61 @@ import UserGrid from '@/components/location/UserGrid';
 import CheckInStatus from '@/components/location/CheckInStatus';
 import PingNotifications from '@/components/notifications/PingNotifications';
 
+const CHECKIN_RADIUS_METERS = 50;
+
+// Calculate distance between two coordinates in meters (Haversine formula)
+const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    if (!lat1 || !lon1 || !lat2 || !lon2) return null;
+    const R = 6371e3; // Earth's radius in meters
+    const φ1 = lat1 * Math.PI / 180;
+    const φ2 = lat2 * Math.PI / 180;
+    const Δφ = (lat2 - lat1) * Math.PI / 180;
+    const Δλ = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+};
+
 export default function Home() {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [selectedLocation, setSelectedLocation] = useState(null);
     const [checkingIn, setCheckingIn] = useState(false);
     const [checkingOut, setCheckingOut] = useState(false);
+    const [userLocation, setUserLocation] = useState(null);
+    const [geoError, setGeoError] = useState(null);
+    const [loadingGeo, setLoadingGeo] = useState(true);
+    const checkInIdRef = useRef(null);
     const queryClient = useQueryClient();
+
+    // Get user's current location
+    useEffect(() => {
+        if (!navigator.geolocation) {
+            setGeoError('Geolocation not supported');
+            setLoadingGeo(false);
+            return;
+        }
+
+        const watchId = navigator.geolocation.watchPosition(
+            (position) => {
+                setUserLocation({
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude
+                });
+                setLoadingGeo(false);
+                setGeoError(null);
+            },
+            (error) => {
+                setGeoError('Location access denied');
+                setLoadingGeo(false);
+            },
+            { enableHighAccuracy: true, maximumAge: 10000, timeout: 10000 }
+        );
+
+        return () => navigator.geolocation.clearWatch(watchId);
+    }, []);
 
     useEffect(() => {
         const loadUser = async () => {
@@ -56,6 +104,60 @@ export default function Home() {
     });
 
     const myActiveCheckIn = allCheckIns.find(c => c.user_email === user?.email && c.is_active);
+    
+    // Store check-in ID in ref for cleanup
+    useEffect(() => {
+        checkInIdRef.current = myActiveCheckIn?.id || null;
+    }, [myActiveCheckIn?.id]);
+
+    // Auto-checkout on page unload/close
+    useEffect(() => {
+        const handleBeforeUnload = () => {
+            if (checkInIdRef.current) {
+                // Use sendBeacon for reliable delivery on page close
+                const data = JSON.stringify({
+                    is_active: false,
+                    checked_out_at: new Date().toISOString()
+                });
+                // Note: This is a best-effort approach
+                navigator.sendBeacon && navigator.sendBeacon('/api/checkout', data);
+            }
+        };
+
+        const handleVisibilityChange = async () => {
+            if (document.visibilityState === 'hidden' && checkInIdRef.current) {
+                // When app goes to background, mark as inactive
+                await base44.entities.CheckIn.update(checkInIdRef.current, {
+                    is_active: false,
+                    checked_out_at: new Date().toISOString()
+                });
+            }
+        };
+
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        return () => {
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
+    }, []);
+
+    // Calculate distance to each location
+    const getDistanceToLocation = (location) => {
+        if (!userLocation || !location.latitude || !location.longitude) return null;
+        return calculateDistance(
+            userLocation.latitude,
+            userLocation.longitude,
+            location.latitude,
+            location.longitude
+        );
+    };
+
+    const isNearLocation = (location) => {
+        const distance = getDistanceToLocation(location);
+        return distance !== null && distance <= CHECKIN_RADIUS_METERS;
+    };
     
     const getCheckInsForLocation = (locationId, applyFilters = false) => {
         return allCheckIns.filter(c => {
@@ -250,22 +352,37 @@ export default function Home() {
                                 <MapPin className="w-5 h-5 text-amber-400" />
                                 Authorized Locations
                             </h2>
+                            {loadingGeo && (
+                                <div className="flex items-center gap-2 text-slate-400 text-sm mb-4 p-3 rounded-lg bg-white/5">
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    <span>Getting your location...</span>
+                                </div>
+                            )}
+                            {geoError && (
+                                <div className="flex items-center gap-2 text-amber-400 text-sm mb-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                                    <Navigation className="w-4 h-4" />
+                                    <span>Enable location to check in nearby venues</span>
+                                </div>
+                            )}
                             <div className="grid gap-4">
-                                {locations.map((location) => (
-                                    <LocationCard
-                                        key={location.id}
-                                        location={location}
-                                        activeCount={getCheckInsForLocation(location.id).length}
-                                        isCheckedIn={myActiveCheckIn?.location_id === location.id}
-                                        onClick={() => {
-                                            if (isFemale || myActiveCheckIn?.location_id === location.id) {
+                                {locations.map((location) => {
+                                    const distance = getDistanceToLocation(location);
+                                    const nearby = isNearLocation(location);
+                                    
+                                    return (
+                                        <LocationCard
+                                            key={location.id}
+                                            location={location}
+                                            activeCount={getCheckInsForLocation(location.id).length}
+                                            isCheckedIn={myActiveCheckIn?.location_id === location.id}
+                                            isNearby={nearby}
+                                            distance={distance}
+                                            onClick={() => {
                                                 setSelectedLocation(location);
-                                            } else {
-                                                handleCheckIn(location);
-                                            }
-                                        }}
-                                    />
-                                ))}
+                                            }}
+                                        />
+                                    );
+                                })}
                             </div>
                             {locations.length === 0 && (
                                 <div className="text-center py-12">
@@ -299,13 +416,30 @@ export default function Home() {
 
                             {/* Check In / Check Out Button */}
                             {myActiveCheckIn?.location_id !== selectedLocation.id ? (
-                                <Button
-                                    onClick={() => handleCheckIn(selectedLocation)}
-                                    disabled={checkingIn}
-                                    className="w-full h-14 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-black font-bold text-lg rounded-xl"
-                                >
-                                    {checkingIn ? 'Checking in...' : 'Check In Here'}
-                                </Button>
+                                <>
+                                    {isNearLocation(selectedLocation) ? (
+                                        <Button
+                                            onClick={() => handleCheckIn(selectedLocation)}
+                                            disabled={checkingIn}
+                                            className="w-full h-14 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-black font-bold text-lg rounded-xl"
+                                        >
+                                            {checkingIn ? 'Checking in...' : 'Check In Here'}
+                                        </Button>
+                                    ) : (
+                                        <div className="w-full p-4 rounded-xl bg-slate-800/50 border border-slate-700 text-center">
+                                            <Navigation className="w-6 h-6 text-slate-500 mx-auto mb-2" />
+                                            <p className="text-slate-400 font-medium">You're not close enough</p>
+                                            <p className="text-slate-500 text-sm mt-1">
+                                                Get within {CHECKIN_RADIUS_METERS}m to check in
+                                                {getDistanceToLocation(selectedLocation) && (
+                                                    <span className="block mt-1 text-amber-400">
+                                                        Currently {Math.round(getDistanceToLocation(selectedLocation))}m away
+                                                    </span>
+                                                )}
+                                            </p>
+                                        </div>
+                                    )}
+                                </>
                             ) : (
                                 <Button
                                     onClick={handleCheckOut}
