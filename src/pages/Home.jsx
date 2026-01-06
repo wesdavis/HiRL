@@ -57,12 +57,24 @@ export default function Home() {
 
     const myActiveCheckIn = allCheckIns.find(c => c.user_email === user?.email && c.is_active);
     
-    const getCheckInsForLocation = (locationId) => {
-        return allCheckIns.filter(c => 
-            c.location_id === locationId && 
-            c.is_active && 
-            c.user_email !== user?.email
-        );
+    const getCheckInsForLocation = (locationId, applyFilters = false) => {
+        return allCheckIns.filter(c => {
+            // Basic filters
+            if (c.location_id !== locationId || !c.is_active || c.user_email === user?.email) {
+                return false;
+            }
+            
+            // If not applying filters, return all (for count display)
+            if (!applyFilters) return true;
+            
+            // Filter out users with private mode ON
+            if (c.user_private_mode) return false;
+            
+            // Filter by seeking preference
+            const userSeeking = user?.seeking;
+            if (userSeeking === 'everyone') return true;
+            return c.user_gender === userSeeking;
+        });
     };
 
     const handleCheckIn = async (location) => {
@@ -81,6 +93,7 @@ export default function Home() {
             user_photo: user.photo_url,
             user_gender: user.gender,
             user_bio: user.bio,
+            user_private_mode: user.private_mode || false,
             location_id: location.id,
             location_name: location.name,
             is_active: true
@@ -110,7 +123,7 @@ export default function Home() {
         await refetchPings();
     };
 
-    const profileComplete = user?.gender && user?.photo_url;
+    const profileComplete = user?.gender && user?.photo_url && user?.seeking;
 
     if (loading) {
         return (
@@ -133,7 +146,9 @@ export default function Home() {
     }
 
     const isFemale = user.gender === 'female';
-    const locationCheckIns = selectedLocation ? getCheckInsForLocation(selectedLocation.id) : [];
+    // For display grid, apply seeking/private filters; for count, show all
+    const locationCheckIns = selectedLocation ? getCheckInsForLocation(selectedLocation.id, true) : [];
+    const locationCheckInsCount = selectedLocation ? getCheckInsForLocation(selectedLocation.id, false).length : 0;
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950">
@@ -309,9 +324,14 @@ export default function Home() {
                                             People Here
                                         </h3>
                                         <span className="px-3 py-1 rounded-full bg-white/10 text-slate-300 text-sm">
-                                            {locationCheckIns.length} {locationCheckIns.length === 1 ? 'person' : 'people'}
+                                            {locationCheckIns.length} match{locationCheckIns.length !== 1 ? 'es' : ''}
                                         </span>
                                     </div>
+                                    {user.seeking && user.seeking !== 'everyone' && (
+                                        <p className="text-slate-500 text-sm">
+                                            Showing {user.seeking} profiles based on your preferences
+                                        </p>
+                                    )}
                                     <UserGrid
                                         users={locationCheckIns}
                                         currentUser={user}
@@ -322,12 +342,17 @@ export default function Home() {
                                 </div>
                             ) : (
                                 <div className="text-center py-12">
-                                    <div className="w-20 h-20 rounded-full bg-blue-500/10 flex items-center justify-center mx-auto mb-4">
-                                        <EyeOff className="w-10 h-10 text-blue-400" />
+                                    <div className="w-20 h-20 rounded-full bg-green-500/10 flex items-center justify-center mx-auto mb-4">
+                                        <Eye className="w-10 h-10 text-green-400" />
                                     </div>
-                                    <p className="text-slate-300 font-medium">Your profile is visible</p>
-                                    <p className="text-slate-500 text-sm mt-1">
-                                        Others can see you and ping you while you're checked in
+                                    <p className="text-white text-lg font-semibold mb-2">
+                                        You are now discoverable to others at
+                                    </p>
+                                    <p className="text-amber-400 font-bold text-xl">
+                                        {selectedLocation.name}
+                                    </p>
+                                    <p className="text-slate-500 text-sm mt-3">
+                                        Others who match their preferences can see your profile and ping you
                                     </p>
                                 </div>
                             )}

@@ -14,9 +14,11 @@ export default function ProfileSetup({ user, onComplete }) {
     const [uploading, setUploading] = useState(false);
     const [formData, setFormData] = useState({
         gender: user?.gender || '',
+        seeking: user?.seeking || '',
         bio: user?.bio || '',
         photo_url: user?.photo_url || '',
-        age: user?.age || ''
+        age: user?.age || '',
+        private_mode: user?.private_mode || false
     });
 
     const handlePhotoUpload = async (e) => {
@@ -94,6 +96,46 @@ export default function ProfileSetup({ user, onComplete }) {
                     )}
 
                     {step === 2 && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="space-y-6"
+                        >
+                            <div className="text-center">
+                                <p className="text-slate-300 mb-4">Who are you interested in meeting?</p>
+                                <RadioGroup
+                                    value={formData.seeking}
+                                    onValueChange={(v) => setFormData(prev => ({ ...prev, seeking: v }))}
+                                    className="flex flex-wrap justify-center gap-3"
+                                >
+                                    {['female', 'male', 'other', 'everyone'].map((s) => (
+                                        <div key={s}>
+                                            <RadioGroupItem
+                                                value={s}
+                                                id={`seeking-${s}`}
+                                                className="peer sr-only"
+                                            />
+                                            <Label
+                                                htmlFor={`seeking-${s}`}
+                                                className="flex items-center justify-center px-5 py-2.5 rounded-xl border border-white/10 bg-white/5 cursor-pointer transition-all peer-data-[state=checked]:border-amber-500 peer-data-[state=checked]:bg-amber-500/10 hover:bg-white/10 text-slate-300 peer-data-[state=checked]:text-amber-300 capitalize"
+                                            >
+                                                {s}
+                                            </Label>
+                                        </div>
+                                    ))}
+                                </RadioGroup>
+                            </div>
+                            <Button
+                                onClick={() => setStep(3)}
+                                disabled={!formData.seeking}
+                                className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-black font-semibold h-12 rounded-xl"
+                            >
+                                Continue <ArrowRight className="w-4 h-4 ml-2" />
+                            </Button>
+                        </motion.div>
+                    )}
+
+                    {step === 3 && (
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
