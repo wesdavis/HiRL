@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Upload, Save, User, Zap, MapPin, LogOut } from 'lucide-react';
+import { Upload, Save, User, Zap, MapPin, LogOut, Eye, EyeOff } from 'lucide-react';
+import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from 'sonner';
 import moment from 'moment';
 
@@ -24,7 +26,9 @@ export default function Profile() {
             setFormData({
                 bio: userData.bio || '',
                 photo_url: userData.photo_url || '',
-                age: userData.age || ''
+                age: userData.age || '',
+                seeking: userData.seeking || 'everyone',
+                private_mode: userData.private_mode || false
             });
             setLoading(false);
         };
@@ -154,6 +158,51 @@ export default function Profile() {
                                 rows={3}
                             />
                         </div>
+                        
+                        {/* Seeking Preference */}
+                        {user.gender === 'female' && (
+                            <div>
+                                <Label className="text-slate-300 mb-2 block">Seeking</Label>
+                                <Select
+                                    value={formData.seeking}
+                                    onValueChange={(v) => setFormData(prev => ({ ...prev, seeking: v }))}
+                                >
+                                    <SelectTrigger className="bg-white/5 border-white/10 text-white h-12 rounded-xl">
+                                        <SelectValue placeholder="Select preference" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="female">Female</SelectItem>
+                                        <SelectItem value="male">Male</SelectItem>
+                                        <SelectItem value="other">Other</SelectItem>
+                                        <SelectItem value="everyone">Everyone</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
+
+                        {/* Private Mode Toggle */}
+                        <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl">
+                            <div className="flex items-center gap-3">
+                                {formData.private_mode ? (
+                                    <EyeOff className="w-5 h-5 text-slate-400" />
+                                ) : (
+                                    <Eye className="w-5 h-5 text-green-400" />
+                                )}
+                                <div>
+                                    <p className="text-white font-medium">Private Mode</p>
+                                    <p className="text-slate-400 text-sm">
+                                        {formData.private_mode 
+                                            ? "You're hidden from discovery" 
+                                            : "You're visible to others"}
+                                    </p>
+                                </div>
+                            </div>
+                            <Switch
+                                checked={formData.private_mode}
+                                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, private_mode: checked }))}
+                            />
+                        </div>
+
                         <Button
                             onClick={handleSave}
                             disabled={saving}

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, Zap, ArrowLeft, Eye, EyeOff, RefreshCw } from 'lucide-react';
+import { MapPin, Zap, ArrowLeft, Eye, EyeOff, RefreshCw, Search } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { toast } from 'sonner';
 
@@ -215,17 +215,19 @@ export default function Home() {
                         <div className="flex items-center gap-3">
                             {isFemale ? (
                                 <>
-                                    <Eye className="w-5 h-5 text-purple-400" />
+                                    <Search className="w-5 h-5 text-purple-400" />
                                     <div>
                                         <p className="text-purple-300 font-medium">Browse & Connect</p>
-                                        <p className="text-slate-400 text-sm">See who's at each location and send pings</p>
+                                        <p className="text-slate-400 text-sm">
+                                            Seeking: <span className="text-purple-300 capitalize">{user.seeking || 'everyone'}</span>
+                                        </p>
                                     </div>
                                 </>
                             ) : (
                                 <>
                                     <EyeOff className="w-5 h-5 text-blue-400" />
                                     <div>
-                                        <p className="text-blue-300 font-medium">Visible Mode</p>
+                                        <p className="text-blue-300 font-medium">Discoverable Mode</p>
                                         <p className="text-slate-400 text-sm">Your profile is visible when checked in, but you can't browse others</p>
                                     </div>
                                 </>
