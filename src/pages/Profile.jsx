@@ -67,15 +67,22 @@ export default function Profile() {
     };
 
     const handleLogout = async () => {
-        // Check out from any active check-in before logging out
-        const activeCheckIn = myCheckIns.find(c => c.is_active);
-        if (activeCheckIn) {
-            await base44.entities.CheckIn.update(activeCheckIn.id, {
-                is_active: false,
-                checked_out_at: new Date().toISOString()
-            });
+        try {
+            // Check out from any active check-in before logging out
+            const activeCheckIn = myCheckIns.find(c => c.is_active);
+            if (activeCheckIn) {
+                await base44.entities.CheckIn.update(activeCheckIn.id, {
+                    is_active: false,
+                    checked_out_at: new Date().toISOString()
+                });
+            }
+        } catch (err) {
+            console.error('Checkout error:', err);
+        } finally {
+            // Clear state and logout
+            setUser(null);
+            await base44.auth.logout();
         }
-        base44.auth.logout();
     };
 
     if (loading) {
