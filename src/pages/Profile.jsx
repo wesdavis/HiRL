@@ -81,7 +81,7 @@ export default function Profile() {
         }
         
         // Redirect FIRST, then logout will clear everything
-        window.location.href = '/';
+        window.location.href = '/landing';
         
         // Logout after redirect is initiated (non-blocking)
         setTimeout(() => {
