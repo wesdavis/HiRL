@@ -91,21 +91,24 @@ export default function Profile() {
         }
     };
 
-    const handleLogout = () => {
-    // 1. Clear the local user state so the UI stops trying to read data
-    if (setUser) setUser(null); 
-    
-    // 2. Wipe the local storage to clear the session
-    localStorage.clear();
-    
-    // 3. Trigger the logout AND the redirect in one line
-    // In Base44, passing the string to logout() tells it where to go next
-    base44.auth.logout('/landing');
-    
-    // 4. Force a hard jump just in case the SDK doesn't trigger
-    setTimeout(() => {
+    const handleLogout = async () => {
+    try {
+        // 1. Clear local state so the UI stops trying to render user data
+        if (setUser) setUser(null);
+        
+        // 2. Clear storage to ensure a fresh session
+        localStorage.clear();
+
+        // 3. Perform logout and EXPLICITLY pass the destination path
+        // This tells the platform: "Log out, then immediately load /landing"
+        await base44.auth.logout('/landing');
+
+        // 4. Emergency Backup: If the SDK doesn't redirect, we force it
         window.location.href = '/landing';
-    }, 100);
+    } catch (error) {
+        console.error("Logout error:", error);
+        window.location.href = '/landing';
+    }
 };
 
     // 5. GUARD CLAUSES (Must be AFTER all hooks)
