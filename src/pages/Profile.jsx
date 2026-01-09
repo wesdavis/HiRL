@@ -15,6 +15,9 @@ import moment from 'moment';
 export default function Profile() {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
+
+    // Guard clause to prevent null access
+    if (!user) return <div className='min-h-screen bg-slate-950' />;
     const [saving, setSaving] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [formData, setFormData] = useState({});
@@ -66,26 +69,15 @@ export default function Profile() {
         toast.success('Profile updated!');
     };
 
-    const handleLogout = async () => {
-        // Immediately clear state to prevent null access errors
-        setUser(null);
-        setLoading(true);
-
-        // Checkout from active location
-        try {
-            const activeCheckIn = myCheckIns.find(c => c.is_active);
-            if (activeCheckIn) {
-                await base44.entities.CheckIn.update(activeCheckIn.id, {
-                    is_active: false,
-                    checked_out_at: new Date().toISOString()
-                });
-            }
-        } catch (err) {
-            console.error('Checkout error:', err);
-        }
-
-        // Logout and redirect
-        await base44.auth.logout('/landing');
+    const handleLogout = () => {
+        // 1. Clear local state immediately to stop UI rendering
+        if (setUser) setUser(null); 
+        
+        // 2. Clear local storage just in case
+        localStorage.clear();
+        
+        // 3. Use the SDK's atomic logout with a hard redirect
+        base44.auth.logout('/landing');
     };
 
     // Show loading spinner if user data is still loading or user is null

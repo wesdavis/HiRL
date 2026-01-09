@@ -1,15 +1,15 @@
 import DevTools from './pages/DevTools';
 import Home from './pages/Home';
-import Profile from './pages/Profile';
 import Landing from './pages/Landing';
+import Profile from './pages/Profile';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
     "DevTools": DevTools,
     "Home": Home,
-    "Profile": Profile,
     "Landing": Landing,
+    "Profile": Profile,
 }
 
 export const pagesConfig = {
