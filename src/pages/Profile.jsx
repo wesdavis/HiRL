@@ -11,6 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from 'sonner';
 import moment from 'moment';
+import { createPageUrl } from '../utils';
 
 export default function Profile() {
     // 1. ALL HOOKS MUST BE AT THE TOP
@@ -92,24 +93,22 @@ export default function Profile() {
     };
 
     const handleLogout = async () => {
-    try {
-        // 1. Clear the user state so the UI knows to stop rendering data
-        if (setUser) setUser(null);
-        
-        // 2. Clear local storage
-        localStorage.clear();
+        try {
+            // 1. Clear state immediately
+            setUser(null);
+            localStorage.clear();
 
-        // 3. Tell the Base44 auth to log out and go to the Landing page
-        // Since Layout.js uses 'Landing', this is the target
-        await base44.auth.logout('/landing');
-
-        // 4. Fail-safe: Force the browser to jump if the SDK doesn't
-        window.location.href = '/landing';
-    } catch (error) {
-        console.error("Logout failed:", error);
-        window.location.href = '/landing';
-    }
-};
+            // 2. Use createPageUrl to get the correct path for Landing page
+            const landingPath = createPageUrl('Landing');
+            
+            // 3. Logout with the proper path
+            await base44.auth.logout(landingPath);
+        } catch (error) {
+            console.error("Logout failed:", error);
+            // Fallback: force redirect
+            window.location.href = createPageUrl('Landing');
+        }
+    };
 
     // 5. GUARD CLAUSES (Must be AFTER all hooks)
     if (loading) {
