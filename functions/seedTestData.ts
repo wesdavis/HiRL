@@ -10,12 +10,19 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
         }
 
-        // Get first active location
-        const locations = await base44.asServiceRole.entities.Location.filter({ is_active: true });
-        if (locations.length === 0) {
-            return Response.json({ error: 'No active locations found' }, { status: 400 });
+        // Get or create a location
+        let location = (await base44.asServiceRole.entities.Location.filter({ is_active: true }))[0];
+        if (!location) {
+            // Create a dummy location if none exist
+            location = await base44.asServiceRole.entities.Location.create({
+                name: 'Test Lounge',
+                address: '123 Test St, Test City',
+                category: 'lounge',
+                latitude: 34.052235,
+                longitude: -118.243683,
+                is_active: true
+            });
         }
-        const location = locations[0];
 
         // Test users data
         const testUsers = [
@@ -120,8 +127,8 @@ Deno.serve(async (req) => {
     } catch (error) {
         console.error('Seed error:', error);
         return Response.json({ 
-            error: error.message,
-            details: error.stack 
-        }, { status: 500 });
+            success: false, 
+            error: error.message 
+        }, { status: 200 });
     }
 });
