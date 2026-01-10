@@ -93,12 +93,17 @@ export default function Profile() {
     };
 
     const handleLogout = async () => {
-        try {
-            await base44.auth.logout('/landing');
-        } catch (error) {
-            console.error("Logout failed:", error);
-        }
-    };
+    try {
+        if (setUser) setUser(null);
+        localStorage.clear();
+        
+        // Trust the SDK to do the job now
+        const landingPath = createPageUrl('Landing');
+        await base44.auth.logout(landingPath); 
+    } catch (error) {
+        console.error("Logout error", error);
+    }
+};
 
     // 5. GUARD CLAUSES (Must be AFTER all hooks)
     if (loading) {
