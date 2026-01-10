@@ -68,22 +68,13 @@ Deno.serve(async (req) => {
         const createdCheckIns = [];
 
         for (const userData of testUsers) {
-            // Check if user already exists
-            const existingUsers = await base44.asServiceRole.entities.User.filter({ 
-                email: userData.email 
-            });
-
-            let userId;
-            if (existingUsers.length > 0) {
-                // Update existing user
-                userId = existingUsers[0].id;
-                await base44.asServiceRole.entities.User.update(userId, userData);
-                createdUsers.push({ ...userData, id: userId, status: 'updated' });
-            } else {
-                // Create new user
-                const newUser = await base44.asServiceRole.entities.User.create(userData);
-                userId = newUser.id;
-                createdUsers.push({ ...userData, id: userId, status: 'created' });
+            // Try to invite the user (will fail silently if already exists)
+            try {
+                await base44.users.inviteUser(userData.email, 'user');
+                createdUsers.push({ ...userData, status: 'invited' });
+            } catch (error) {
+                // User likely already exists
+                createdUsers.push({ ...userData, status: 'existing' });
             }
 
             // Remove any existing active check-ins for this user
@@ -115,7 +106,7 @@ Deno.serve(async (req) => {
 
         return Response.json({
             success: true,
-            message: `Test squad generated at ${location.name}`,
+            message: `Test squad generated at ${location.name}. Note: Test users must complete registration via invite email to appear in app.`,
             users: createdUsers,
             checkIns: createdCheckIns,
             location: {
