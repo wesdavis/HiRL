@@ -93,21 +93,22 @@ export default function Profile() {
     };
 
     const handleLogout = async () => {
-        try {
-            // 1. Clear state immediately
-            setUser(null);
-            localStorage.clear();
+        // 1. Clear state immediately
+        setUser(null);
+        localStorage.clear();
 
-            // 2. Use createPageUrl to get the correct path for Landing page
-            const landingPath = createPageUrl('Landing');
-            
-            // 3. Logout with the proper path
+        // 2. Get the landing path
+        const landingPath = createPageUrl('Landing');
+        
+        try {
+            // 3. Logout via SDK
             await base44.auth.logout(landingPath);
         } catch (error) {
             console.error("Logout failed:", error);
-            // Fallback: force redirect
-            window.location.href = createPageUrl('Landing');
         }
+        
+        // 4. Guaranteed hard redirect regardless of SDK behavior
+        window.location.href = landingPath;
     };
 
     // 5. GUARD CLAUSES (Must be AFTER all hooks)
