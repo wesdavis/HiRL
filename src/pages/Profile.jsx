@@ -93,20 +93,20 @@ export default function Profile() {
 
     const handleLogout = async () => {
     try {
-        // 1. Clear local state so the UI stops trying to render user data
+        // 1. Clear the user state so the UI knows to stop rendering data
         if (setUser) setUser(null);
         
-        // 2. Clear storage to ensure a fresh session
+        // 2. Clear local storage
         localStorage.clear();
 
-        // 3. Perform logout and EXPLICITLY pass the destination path
-        // This tells the platform: "Log out, then immediately load /landing"
+        // 3. Tell the Base44 auth to log out and go to the Landing page
+        // Since Layout.js uses 'Landing', this is the target
         await base44.auth.logout('/landing');
 
-        // 4. Emergency Backup: If the SDK doesn't redirect, we force it
+        // 4. Fail-safe: Force the browser to jump if the SDK doesn't
         window.location.href = '/landing';
     } catch (error) {
-        console.error("Logout error:", error);
+        console.error("Logout failed:", error);
         window.location.href = '/landing';
     }
 };
