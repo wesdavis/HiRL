@@ -261,8 +261,6 @@ export default function Home() {
         await refetchPings();
     };
 
-    const profileComplete = user?.gender && user?.photo_url && user?.seeking;
-
     // Show loading spinner if user data is still loading or user is null
     if (loading || !user) {
         return (
@@ -272,16 +270,10 @@ export default function Home() {
         );
     }
 
-    if (!profileComplete) {
-        return (
-            <ProfileSetup
-                user={user}
-                onComplete={async () => {
-                    const updatedUser = await base44.auth.me();
-                    setUser(updatedUser);
-                }}
-            />
-        );
+    // Redirect to ProfileSetup if incomplete
+    if (!user.gender || !user.full_name) {
+        window.location.href = '/profile-setup';
+        return null;
     }
 
     const isFemale = user?.gender === 'female';
