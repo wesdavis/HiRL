@@ -5,19 +5,6 @@ import { Zap, MapPin, Shield, Sparkles, Heart, Users } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 
 export default function Landing() {
-    useEffect(() => {
-        const checkAuth = async () => {
-            try {
-                await base44.auth.me();
-                // User is authenticated, redirect to home
-                window.location.href = '/';
-            } catch {
-                // User is not authenticated, stay on landing
-            }
-        };
-        checkAuth();
-    }, []);
-
     const handleGetStarted = () => {
         base44.auth.redirectToLogin('/');
     };
