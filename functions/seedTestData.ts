@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
         // Test users data
         const testUsers = [
             {
-                email: 'sarah_test@hirl.com',
+                email: 'west9@protonmail.com',
                 full_name: 'Sarah Martinez',
                 gender: 'female',
                 seeking: 'male',
@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
                 photo_url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400'
             },
             {
-                email: 'jessica_test@hirl.com',
+                email: 'cloud989_2000@yahoo.com',
                 full_name: 'Jessica Chen',
                 gender: 'female',
                 seeking: 'male',
@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
                 photo_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400'
             },
             {
-                email: 'mike_test@hirl.com',
+                email: 'statafarion@me.com',
                 full_name: 'Mike Thompson',
                 gender: 'male',
                 seeking: 'female',
