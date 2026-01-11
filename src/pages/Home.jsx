@@ -74,10 +74,11 @@ export default function Home() {
             try {
                 const userData = await base44.auth.me();
                 setUser(userData);
-                setLoading(false);
             } catch (error) {
-                // User not authenticated, redirect to landing
-                window.location.href = '/landing';
+                // User not authenticated, don't redirect yet
+                setUser(null);
+            } finally {
+                setLoading(false);
             }
         };
         loadUser();
@@ -266,13 +267,19 @@ export default function Home() {
         await refetchPings();
     };
 
-    // Show loading spinner if user data is still loading or user is null
-    if (loading || !user) {
+    // Show loading spinner while loading
+    if (loading) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 flex items-center justify-center">
                 <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
             </div>
         );
+    }
+
+    // Only redirect to landing if loading is complete AND no user
+    if (!loading && !user) {
+        window.location.href = '/landing';
+        return null;
     }
 
     // Redirect to ProfileSetup if incomplete
