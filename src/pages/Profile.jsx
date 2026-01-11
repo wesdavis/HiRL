@@ -93,8 +93,7 @@ export default function Profile() {
     };
 
     const handleLogout = () => {
-        setUser(null);
-        window.location.href = '/landing';
+        base44.auth.logout('/');
     };
 
     // 5. GUARD CLAUSES (Must be AFTER all hooks)
