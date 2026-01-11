@@ -7,16 +7,19 @@ import { base44 } from '@/api/base44Client';
 export default function Landing() {
     useEffect(() => {
         const checkAuth = async () => {
-            const isAuthenticated = await base44.auth.isAuthenticated();
-            if (isAuthenticated) {
+            try {
+                await base44.auth.me();
+                // User is authenticated, redirect to home
                 window.location.href = '/';
+            } catch {
+                // User is not authenticated, stay on landing
             }
         };
         checkAuth();
     }, []);
 
-    const handleGetStarted = async () => {
-        await base44.auth.redirectToLogin('/');
+    const handleGetStarted = () => {
+        base44.auth.redirectToLogin('/');
     };
 
     return (

@@ -71,9 +71,14 @@ export default function Home() {
 
     useEffect(() => {
         const loadUser = async () => {
-            const userData = await base44.auth.me();
-            setUser(userData);
-            setLoading(false);
+            try {
+                const userData = await base44.auth.me();
+                setUser(userData);
+                setLoading(false);
+            } catch (error) {
+                // User not authenticated, redirect to landing
+                window.location.href = '/landing';
+            }
         };
         loadUser();
     }, []);
