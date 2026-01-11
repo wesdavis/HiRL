@@ -1,10 +1,20 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { motion } from 'framer-motion';
 import { Zap, MapPin, Shield, Sparkles, Heart, Users } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 
 export default function Landing() {
+    useEffect(() => {
+        const checkAuth = async () => {
+            const isAuthenticated = await base44.auth.isAuthenticated();
+            if (isAuthenticated) {
+                window.location.href = '/';
+            }
+        };
+        checkAuth();
+    }, []);
+
     const handleGetStarted = async () => {
         await base44.auth.redirectToLogin('/');
     };
