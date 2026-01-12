@@ -6,7 +6,9 @@ import { base44 } from '@/api/base44Client';
 
 export default function Landing() {
     const handleGetStarted = () => {
-        base44.auth.redirectToLogin('/');
+        // FIX: Use 'window.location.origin' (e.g., https://yourapp.com) 
+        // instead of just '/' to ensure mobile browsers return correctly.
+        base44.auth.redirectToLogin(window.location.origin);
     };
 
     return (
