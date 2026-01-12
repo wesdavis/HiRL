@@ -9,59 +9,24 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
-  const [isLoadingPublicSettings, setIsLoadingPublicSettings] = useState(true);
   const [authError, setAuthError] = useState(null);
-  const [appPublicSettings, setAppPublicSettings] = useState(null);
 
   useEffect(() => {
-    checkAppState();
+    // On mount, ALWAYS ask the server "Who am I?"
+    // We ignore appParams.token because on mobile it might be in a cookie.
+    checkUserAuth();
   }, []);
-
-  const checkAppState = async () => {
-    try {
-      setIsLoadingPublicSettings(true);
-      setAuthError(null);
-      
-      const appClient = createAxiosClient({
-        baseURL: `/api/apps/public`,
-        headers: { 'X-App-Id': appParams.appId },
-        token: appParams.token,
-        interceptResponses: true
-      });
-      
-      try {
-        const publicSettings = await appClient.get(`/prod/public-settings/by-id/${appParams.appId}`);
-        setAppPublicSettings(publicSettings);
-        
-        // --- CRITICAL FIX START ---
-        // Don't trust appParams.token. Always ask the SDK/Server if we have a session.
-        // This fixes the mobile login loop where the token might be in a cookie.
-        await checkUserAuth();
-        // --- CRITICAL FIX END ---
-
-        setIsLoadingPublicSettings(false);
-      } catch (appError) {
-        console.error('App state check failed:', appError);
-        // Fallback: Even if app settings fail, try to get the user
-        await checkUserAuth();
-        setIsLoadingPublicSettings(false);
-      }
-    } catch (error) {
-      console.error('Unexpected error:', error);
-      setIsLoadingPublicSettings(false);
-      setIsLoadingAuth(false);
-    }
-  };
 
   const checkUserAuth = async () => {
     try {
       setIsLoadingAuth(true);
-      // This is the "Truth": Ask the backend directly
       const currentUser = await base44.auth.me();
+      
+      // If code gets here, we are logged in.
       setUser(currentUser);
       setIsAuthenticated(true);
     } catch (error) {
-      // Only now do we admit we aren't logged in
+      // If code gets here, we are logged out.
       setUser(null);
       setIsAuthenticated(false);
       
@@ -74,13 +39,13 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    // 1. Clear State
-    setUser(null);
-    setIsAuthenticated(false);
-    localStorage.clear();
+    // CRITICAL FIX FOR WHITE SCREEN CRASH:
+    // Do NOT call setUser(null) here. 
+    // If we update state, React tries to re-render the Home page with "null" user 
+    // for a split second before the reload happens, which causes the crash.
+    // We just wipe storage and force the browser to reload.
     
-    // 2. HARD REDIRECT
-    // This prevents the "White Screen" crash by wiping React memory
+    localStorage.clear();
     window.location.href = '/'; 
   };
 
@@ -92,13 +57,11 @@ export const AuthProvider = ({ children }) => {
     <AuthContext.Provider value={{ 
       user, 
       isAuthenticated, 
-      isLoadingAuth,
-      isLoadingPublicSettings,
+      isLoadingAuth, 
       authError,
-      appPublicSettings,
       logout,
       navigateToLogin,
-      checkAppState
+      checkUserAuth
     }}>
       {children}
     </AuthContext.Provider>
