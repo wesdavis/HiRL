@@ -7,20 +7,19 @@ import { Button } from "@/components/ui/button";
 import { toast } from 'sonner';
 
 import Landing from './Landing';
-// Make sure this path is correct based on your file tree
-import ProfileSetup from '@/components/profile/ProfileSetup'; 
+// Make sure this path matches your file structure!
+import ProfileSetup from '@/components/profile/ProfileSetup';
 import LocationCard from '@/components/location/LocationCard';
 import UserGrid from '@/components/location/UserGrid';
 import CheckInStatus from '@/components/location/CheckInStatus';
 import PingNotifications from '@/components/notifications/PingNotifications';
 import MatchNotifications from '@/components/notifications/MatchNotifications';
 
-const CHECKIN_RADIUS_METERS = 5000; // Increased for easier testing
+const CHECKIN_RADIUS_METERS = 5000;
 
-// Calculate distance between two coordinates in meters (Haversine formula)
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
     if (!lat1 || !lon1 || !lat2 || !lon2) return null;
-    const R = 6371e3; // Earth's radius in meters
+    const R = 6371e3;
     const φ1 = lat1 * Math.PI / 180;
     const φ2 = lat2 * Math.PI / 180;
     const Δφ = (lat2 - lat1) * Math.PI / 180;
@@ -33,6 +32,7 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
 };
 
 export default function Home() {
+    // 1. ALL HOOKS MUST BE DECLARED FIRST
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [selectedLocation, setSelectedLocation] = useState(null);
@@ -44,14 +44,13 @@ export default function Home() {
     const checkInIdRef = useRef(null);
     const queryClient = useQueryClient();
 
-    // 1. Get user's current location
+    // 2. useEffects
     useEffect(() => {
         if (!navigator.geolocation) {
             setGeoError('Geolocation not supported');
             setLoadingGeo(false);
             return;
         }
-
         const watchId = navigator.geolocation.watchPosition(
             (position) => {
                 setUserLocation({
@@ -67,18 +66,15 @@ export default function Home() {
             },
             { enableHighAccuracy: true, maximumAge: 10000, timeout: 10000 }
         );
-
         return () => navigator.geolocation.clearWatch(watchId);
     }, []);
 
-    // 2. Load User Data Safely
     useEffect(() => {
         const loadUser = async () => {
             try {
                 const userData = await base44.auth.me();
                 setUser(userData);
             } catch (error) {
-                // User not authenticated, set to null
                 setUser(null);
             } finally {
                 setLoading(false);
@@ -87,25 +83,7 @@ export default function Home() {
         loadUser();
     }, []);
 
-    // ------------------------------------------------------------------
-    // CRITICAL FIX: IF NO USER, SHOW LANDING PAGE IMMEDIATELY
-    // We do this BEFORE calling useQuery because useQuery hooks might
-    // try to fetch data using 'user.email' which would be undefined.
-    // ------------------------------------------------------------------
-    if (loading) {
-        return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-                <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
-            </div>
-        );
-    }
-
-    if (!user) {
-        return <Landing />;
-    }
-    // ------------------------------------------------------------------
-
-    // 3. React Query Hooks (Only run if user exists thanks to enabled: !!user)
+    // 3. React Query Hooks (Always declared, but disabled if no user)
     const { data: locations = [] } = useQuery({
         queryKey: ['locations'],
         queryFn: () => base44.entities.Location.filter({ is_active: true }),
@@ -151,7 +129,7 @@ export default function Home() {
         refetchInterval: 3000
     });
 
-    // 4. Helper Logic
+    // 4. Derived State & Helpers
     const blockedUsers = new Set([
         ...myBlocks.map(b => b.blocked_email),
         ...blockedByOthers.map(b => b.blocker_email)
@@ -159,13 +137,11 @@ export default function Home() {
 
     const myActiveCheckIn = allCheckIns.find(c => c.user_email === user?.email && c.is_active);
     
-    // 5. Check-in Cleanup Logic
-    // eslint-disable-next-line react-hooks/rules-of-hooks
+    // 5. Cleanup Effects
     useEffect(() => {
         checkInIdRef.current = myActiveCheckIn?.id || null;
     }, [myActiveCheckIn?.id]);
 
-    // eslint-disable-next-line react-hooks/rules-of-hooks
     useEffect(() => {
         const handleBeforeUnload = () => {
             if (checkInIdRef.current) {
@@ -176,7 +152,6 @@ export default function Home() {
                 navigator.sendBeacon && navigator.sendBeacon('/api/checkout', data);
             }
         };
-
         const handleVisibilityChange = async () => {
             if (document.visibilityState === 'hidden' && checkInIdRef.current) {
                 await base44.entities.CheckIn.update(checkInIdRef.current, {
@@ -185,10 +160,8 @@ export default function Home() {
                 });
             }
         };
-
         window.addEventListener('beforeunload', handleBeforeUnload);
         document.addEventListener('visibilitychange', handleVisibilityChange);
-
         return () => {
             window.removeEventListener('beforeunload', handleBeforeUnload);
             document.removeEventListener('visibilitychange', handleVisibilityChange);
@@ -230,16 +203,13 @@ export default function Home() {
             toast.error('Please log in to check in');
             return;
         }
-
         setCheckingIn(true);
-        
         if (myActiveCheckIn) {
             await base44.entities.CheckIn.update(myActiveCheckIn.id, {
                 is_active: false,
                 checked_out_at: new Date().toISOString()
             });
         }
-
         await base44.entities.CheckIn.create({
             user_email: user?.email,
             user_name: user?.full_name,
@@ -251,7 +221,6 @@ export default function Home() {
             location_name: location.name,
             is_active: true
         });
-
         await refetchCheckIns();
         setCheckingIn(false);
         toast.success(`Checked in at ${location.name}`);
@@ -260,12 +229,10 @@ export default function Home() {
     const handleCheckOut = async () => {
         if (!myActiveCheckIn) return;
         setCheckingOut(true);
-        
         await base44.entities.CheckIn.update(myActiveCheckIn.id, {
             is_active: false,
             checked_out_at: new Date().toISOString()
         });
-
         await refetchCheckIns();
         setSelectedLocation(null);
         setCheckingOut(false);
@@ -276,13 +243,31 @@ export default function Home() {
         await refetchPings();
     };
 
-    // 6. Redirect to ProfileSetup if incomplete
+    // ------------------------------------------------------------------
+    // 6. CONDITIONAL RENDERING (The "Bouncer" is now safe at the bottom)
+    // ------------------------------------------------------------------
+
+    // A. Show Loading Spinner
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+                <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+        );
+    }
+
+    // B. Show Landing Page (Logged Out)
+    if (!user) {
+        return <Landing />;
+    }
+
+    // C. Redirect to Profile Setup (Incomplete Profile)
     if (!user.gender || !user.full_name) {
-        // We use window.location.href instead of <Redirect> to be safe with unknown routers
         window.location.href = '/profile-setup';
         return null;
     }
 
+    // D. Main App Render (Logged In)
     const isFemale = user?.gender === 'female';
     const locationCheckIns = selectedLocation ? getCheckInsForLocation(selectedLocation.id, true) : [];
 
@@ -325,7 +310,6 @@ export default function Home() {
                         <MatchNotifications matches={matchedPings} onDismiss={() => refetchMatches()} />
                     </div>
                 )}
-
                 {myPings.length > 0 && !selectedLocation && (
                     <div className="mb-6">
                         <PingNotifications pings={myPings} onDismiss={handleDismissPing} />
@@ -486,7 +470,6 @@ export default function Home() {
                                 </Button>
                             )}
 
-                            {/* User Grid - Only for females */}
                             {isFemale ? (
                                 <div className="space-y-4">
                                     <div className="flex items-center justify-between">
