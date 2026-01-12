@@ -6,7 +6,7 @@ import { MapPin, Zap, ArrowLeft, RefreshCw, Loader2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { toast } from 'sonner';
 
-// 1. IMPORTS
+// Imports
 import Landing from './Landing'; 
 import LocationCard from '@/components/location/LocationCard';
 import UserGrid from '@/components/location/UserGrid';
@@ -31,7 +31,7 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
 };
 
 export default function Home() {
-    // 2. STATE
+    // 1. STATE
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [selectedLocation, setSelectedLocation] = useState(null);
@@ -42,14 +42,13 @@ export default function Home() {
     const [loadingGeo, setLoadingGeo] = useState(true);
     const checkInIdRef = useRef(null);
 
-    // 3. AUTH LOADING (CRITICAL FIX FOR LOOP/CRASH)
+    // 2. AUTH CHECK (The Truth Source)
     useEffect(() => {
         const loadUser = async () => {
             try {
                 const userData = await base44.auth.me();
                 setUser(userData);
             } catch (error) {
-                // If this fails, we are definitely logged out
                 setUser(null);
             } finally {
                 setLoading(false);
@@ -58,7 +57,7 @@ export default function Home() {
         loadUser();
     }, []);
 
-    // 4. GEOLOCATION
+    // 3. GEOLOCATION
     useEffect(() => {
         if (!navigator.geolocation) {
             setGeoError('Geolocation not supported');
@@ -82,8 +81,32 @@ export default function Home() {
         return () => navigator.geolocation.clearWatch(watchId);
     }, []);
 
-    // 5. SAFE QUERIES (Enabled ONLY if user AND user.email exist)
-    // This stops the "White Screen" crash on logout
+    // ------------------------------------------------------------
+    // THE BOUNCER: STOP HERE IF NOT LOGGED IN
+    // ------------------------------------------------------------
+    
+    // A. Still Checking? Show Spinner.
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+                <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
+            </div>
+        );
+    }
+
+    // B. No User? Show Landing Page.
+    if (!user) {
+        return <Landing />;
+    }
+
+    // C. Incomplete Profile? Redirect.
+    if (!user.gender || !user.full_name) {
+        window.location.href = '/profile-setup';
+        return null; 
+    }
+    // ------------------------------------------------------------
+
+    // 4. DATA FETCHING (Only runs if passed the Bouncer)
     const canFetch = !!user && !!user.email;
 
     const { data: locations = [] } = useQuery({
@@ -119,28 +142,13 @@ export default function Home() {
         refetchInterval: 3000
     });
 
-    // 6. SAFE DERIVED STATE
-    // We default to null so nothing crashes if queries haven't run
+    // 5. HELPERS
     const myActiveCheckIn = allCheckIns?.find(c => c.user_email === user?.email && c.is_active) || null;
 
     useEffect(() => {
         checkInIdRef.current = myActiveCheckIn?.id || null;
     }, [myActiveCheckIn?.id]);
 
-    // 7. BOUNCER (Conditional Rendering)
-    // A. Show Loading Spinner (Stops the flicker/loop)
-    if (loading) return <div className="min-h-screen bg-slate-950 flex items-center justify-center"><Loader2 className="animate-spin text-amber-500" /></div>;
-    
-    // B. Show Landing Page (If Logged Out)
-    if (!user) return <Landing />;
-
-    // C. Redirect to Profile Setup (If Logged In but Incomplete)
-    if (!user.gender || !user.full_name) {
-        window.location.href = '/profile-setup';
-        return null;
-    }
-
-    // 8. HELPERS & HANDLERS (Only defined if user exists)
     const getDistanceToLocation = (location) => {
         if (!userLocation || !location?.latitude) return null;
         return calculateDistance(userLocation.latitude, userLocation.longitude, location.latitude, location.longitude);
@@ -187,13 +195,13 @@ export default function Home() {
         toast.success('Checked out successfully');
     };
 
-    // 9. MAIN RENDER
+    // 6. MAIN RENDER
     const isFemale = user.gender === 'female';
+    const locationCheckIns = selectedLocation ? getCheckInsForLocation(selectedLocation.id) : [];
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950">
             <div className="max-w-lg mx-auto px-4 py-6 pb-24">
-                {/* Header */}
                  <div className="flex items-center justify-between mb-6">
                     {selectedLocation ? (
                         <Button variant="ghost" onClick={() => setSelectedLocation(null)} className="text-white">
@@ -210,7 +218,6 @@ export default function Home() {
                     </Button>
                 </div>
                 
-                {/* MATCH NOTIFICATIONS */}
                 {matchedPings.length > 0 && !selectedLocation && (
                     <div className="mb-6"><MatchNotifications matches={matchedPings} onDismiss={() => refetchMatches()} /></div>
                 )}
@@ -218,7 +225,6 @@ export default function Home() {
                     <div className="mb-6"><PingNotifications pings={myPings} onDismiss={() => refetchPings()} /></div>
                 )}
 
-                {/* LOCATIONS LIST */}
                 <AnimatePresence mode="wait">
                     {!selectedLocation ? (
                          <motion.div key="locations" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
@@ -235,13 +241,11 @@ export default function Home() {
                             ))}
                          </motion.div>
                     ) : (
-                        /* LOCATION DETAIL */
                         <motion.div key="detail" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
                             <div className="relative rounded-2xl overflow-hidden h-48">
                                 <img src={selectedLocation.image_url || 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=800'} className="w-full h-full object-cover" alt={selectedLocation.name} />
                             </div>
                             
-                            {/* Check In Button */}
                             {myActiveCheckIn?.location_id !== selectedLocation.id ? (
                                 isNearLocation(selectedLocation) ? (
                                     <Button onClick={() => handleCheckIn(selectedLocation)} disabled={checkingIn} className="w-full h-14 bg-amber-500 text-black font-bold rounded-xl">
@@ -256,12 +260,11 @@ export default function Home() {
                                 </Button>
                             )}
 
-                            {/* User Grid (Only if Female) */}
                             {isFemale && (
                                 <div className="space-y-4">
                                     <h3 className="text-white font-bold flex items-center gap-2"><Zap className="w-4 h-4 text-amber-500"/> People Here</h3>
                                     <UserGrid 
-                                        users={selectedLocation ? getCheckInsForLocation(selectedLocation.id) : []} 
+                                        users={locationCheckIns} 
                                         currentUser={user} 
                                         locationId={selectedLocation.id} 
                                         locationName={selectedLocation.name}
