@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, Zap, ArrowLeft, Eye, EyeOff, RefreshCw, Search, Navigation, Loader2 } from 'lucide-react';
+import { MapPin, Zap, ArrowLeft, RefreshCw, Loader2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { toast } from 'sonner';
 
@@ -42,15 +42,14 @@ export default function Home() {
     const [loadingGeo, setLoadingGeo] = useState(true);
     const checkInIdRef = useRef(null);
 
-    // 3. AUTH LOADING (With Debugging)
+    // 3. AUTH LOADING (CRITICAL FIX FOR LOOP/CRASH)
     useEffect(() => {
         const loadUser = async () => {
             try {
                 const userData = await base44.auth.me();
-                console.log("Current User:", userData); // DEBUG LOG
                 setUser(userData);
             } catch (error) {
-                console.error("Auth Failed:", error);
+                // If this fails, we are definitely logged out
                 setUser(null);
             } finally {
                 setLoading(false);
@@ -84,6 +83,7 @@ export default function Home() {
     }, []);
 
     // 5. SAFE QUERIES (Enabled ONLY if user AND user.email exist)
+    // This stops the "White Screen" crash on logout
     const canFetch = !!user && !!user.email;
 
     const { data: locations = [] } = useQuery({
@@ -120,20 +120,21 @@ export default function Home() {
     });
 
     // 6. SAFE DERIVED STATE
-    // We default to empty arrays/null so nothing crashes if queries haven't run
+    // We default to null so nothing crashes if queries haven't run
     const myActiveCheckIn = allCheckIns?.find(c => c.user_email === user?.email && c.is_active) || null;
 
     useEffect(() => {
         checkInIdRef.current = myActiveCheckIn?.id || null;
     }, [myActiveCheckIn?.id]);
 
-    // 7. BOUNCER (This MUST be before any UI rendering)
+    // 7. BOUNCER (Conditional Rendering)
+    // A. Show Loading Spinner (Stops the flicker/loop)
     if (loading) return <div className="min-h-screen bg-slate-950 flex items-center justify-center"><Loader2 className="animate-spin text-amber-500" /></div>;
     
-    // SAFE FALLBACK: If no user, show Landing. 
+    // B. Show Landing Page (If Logged Out)
     if (!user) return <Landing />;
 
-    // PROFILE CHECK: Redirect if incomplete
+    // C. Redirect to Profile Setup (If Logged In but Incomplete)
     if (!user.gender || !user.full_name) {
         window.location.href = '/profile-setup';
         return null;
@@ -188,7 +189,6 @@ export default function Home() {
 
     // 9. MAIN RENDER
     const isFemale = user.gender === 'female';
-    const locationCheckIns = selectedLocation ? getCheckInsForLocation(selectedLocation.id) : [];
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950">
@@ -261,7 +261,7 @@ export default function Home() {
                                 <div className="space-y-4">
                                     <h3 className="text-white font-bold flex items-center gap-2"><Zap className="w-4 h-4 text-amber-500"/> People Here</h3>
                                     <UserGrid 
-                                        users={locationCheckIns} 
+                                        users={selectedLocation ? getCheckInsForLocation(selectedLocation.id) : []} 
                                         currentUser={user} 
                                         locationId={selectedLocation.id} 
                                         locationName={selectedLocation.name}
