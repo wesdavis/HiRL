@@ -1,12 +1,12 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MapPin, Zap, ArrowLeft, Eye, EyeOff, RefreshCw, Search, Navigation, Loader2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { toast } from 'sonner';
 
-// 1. SAFE IMPORTS ONLY (Removed ProfileSetup)
+// 1. IMPORTS
 import Landing from './Landing'; 
 import LocationCard from '@/components/location/LocationCard';
 import UserGrid from '@/components/location/UserGrid';
@@ -31,7 +31,7 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
 };
 
 export default function Home() {
-    // 2. HOOKS AT THE TOP (Fixed the "Rendered more hooks" error)
+    // 2. STATE
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [selectedLocation, setSelectedLocation] = useState(null);
@@ -41,15 +41,16 @@ export default function Home() {
     const [geoError, setGeoError] = useState(null);
     const [loadingGeo, setLoadingGeo] = useState(true);
     const checkInIdRef = useRef(null);
-    const queryClient = useQueryClient();
 
-    // 3. User Load Effect
+    // 3. AUTH LOADING (With Debugging)
     useEffect(() => {
         const loadUser = async () => {
             try {
                 const userData = await base44.auth.me();
+                console.log("Current User:", userData); // DEBUG LOG
                 setUser(userData);
             } catch (error) {
+                console.error("Auth Failed:", error);
                 setUser(null);
             } finally {
                 setLoading(false);
@@ -58,7 +59,7 @@ export default function Home() {
         loadUser();
     }, []);
 
-    // 4. Geolocation Effect
+    // 4. GEOLOCATION
     useEffect(() => {
         if (!navigator.geolocation) {
             setGeoError('Geolocation not supported');
@@ -75,7 +76,6 @@ export default function Home() {
                 setGeoError(null);
             },
             (error) => {
-                setGeoError('Location access denied');
                 setLoadingGeo(false);
             },
             { enableHighAccuracy: true, maximumAge: 10000, timeout: 10000 }
@@ -83,66 +83,65 @@ export default function Home() {
         return () => navigator.geolocation.clearWatch(watchId);
     }, []);
 
-    // 5. Data Queries (Enabled only when user exists)
+    // 5. SAFE QUERIES (Enabled ONLY if user AND user.email exist)
+    const canFetch = !!user && !!user.email;
+
     const { data: locations = [] } = useQuery({
         queryKey: ['locations'],
         queryFn: () => base44.entities.Location.filter({ is_active: true }),
-        enabled: !!user
+        enabled: canFetch
     });
 
     const { data: allCheckIns = [], refetch: refetchCheckIns } = useQuery({
         queryKey: ['checkins'],
         queryFn: () => base44.entities.CheckIn.filter({ is_active: true }),
-        enabled: !!user,
+        enabled: canFetch,
         refetchInterval: 5000
     });
 
     const { data: myPings = [], refetch: refetchPings } = useQuery({
         queryKey: ['my-pings', user?.email],
         queryFn: () => base44.entities.Ping.filter({ to_user_email: user?.email, status: 'pending' }),
-        enabled: !!user?.email,
+        enabled: canFetch,
         refetchInterval: 3000 
     });
 
     const { data: sentPings = [], refetch: refetchSentPings } = useQuery({
         queryKey: ['sent-pings', user?.email],
         queryFn: () => base44.entities.Ping.filter({ from_user_email: user?.email }),
-        enabled: !!user?.email
-    });
-
-    const { data: myBlocks = [] } = useQuery({
-        queryKey: ['my-blocks', user?.email],
-        queryFn: () => base44.entities.Block.filter({ blocker_email: user?.email }),
-        enabled: !!user?.email
-    });
-
-    const { data: blockedByOthers = [] } = useQuery({
-        queryKey: ['blocked-by-others', user?.email],
-        queryFn: () => base44.entities.Block.filter({ blocked_email: user?.email }),
-        enabled: !!user?.email
+        enabled: canFetch
     });
 
     const { data: matchedPings = [], refetch: refetchMatches } = useQuery({
         queryKey: ['matched-pings', user?.email],
         queryFn: () => base44.entities.Ping.filter({ from_user_email: user?.email, status: 'matched' }),
-        enabled: !!user?.email,
+        enabled: canFetch,
         refetchInterval: 3000
     });
 
-    // 6. Helpers
-    const blockedUsers = new Set([
-        ...myBlocks.map(b => b.blocked_email),
-        ...blockedByOthers.map(b => b.blocker_email)
-    ]);
-    const myActiveCheckIn = allCheckIns.find(c => c.user_email === user?.email && c.is_active);
+    // 6. SAFE DERIVED STATE
+    // We default to empty arrays/null so nothing crashes if queries haven't run
+    const myActiveCheckIn = allCheckIns?.find(c => c.user_email === user?.email && c.is_active) || null;
 
     useEffect(() => {
         checkInIdRef.current = myActiveCheckIn?.id || null;
     }, [myActiveCheckIn?.id]);
 
-    // 7. Handlers
+    // 7. BOUNCER (This MUST be before any UI rendering)
+    if (loading) return <div className="min-h-screen bg-slate-950 flex items-center justify-center"><Loader2 className="animate-spin text-amber-500" /></div>;
+    
+    // SAFE FALLBACK: If no user, show Landing. 
+    if (!user) return <Landing />;
+
+    // PROFILE CHECK: Redirect if incomplete
+    if (!user.gender || !user.full_name) {
+        window.location.href = '/profile-setup';
+        return null;
+    }
+
+    // 8. HELPERS & HANDLERS (Only defined if user exists)
     const getDistanceToLocation = (location) => {
-        if (!userLocation || !location.latitude || !location.longitude) return null;
+        if (!userLocation || !location?.latitude) return null;
         return calculateDistance(userLocation.latitude, userLocation.longitude, location.latitude, location.longitude);
     };
 
@@ -151,31 +150,23 @@ export default function Home() {
         return distance !== null && distance <= CHECKIN_RADIUS_METERS;
     };
     
-    const getCheckInsForLocation = (locationId, applyFilters = false) => {
-        return allCheckIns.filter(c => {
-            if (c.location_id !== locationId || !c.is_active || c.user_email === user?.email) return false;
-            if (!applyFilters) return true;
-            if (blockedUsers.has(c.user_email)) return false;
-            if (c.user_private_mode) return false;
-            const userSeeking = user?.seeking;
-            if (userSeeking === 'everyone') return true;
-            return c.user_gender === userSeeking;
-        });
+    const getCheckInsForLocation = (locationId) => {
+        if (!allCheckIns) return [];
+        return allCheckIns.filter(c => c.location_id === locationId && c.is_active && c.user_email !== user.email);
     };
 
     const handleCheckIn = async (location) => {
-        if (!user) return toast.error('Please log in');
         setCheckingIn(true);
         if (myActiveCheckIn) {
             await base44.entities.CheckIn.update(myActiveCheckIn.id, { is_active: false, checked_out_at: new Date().toISOString() });
         }
         await base44.entities.CheckIn.create({
-            user_email: user?.email,
-            user_name: user?.full_name,
-            user_photo: user?.photo_url,
-            user_gender: user?.gender,
-            user_bio: user?.bio,
-            user_private_mode: user?.private_mode || false,
+            user_email: user.email,
+            user_name: user.full_name,
+            user_photo: user.photo_url,
+            user_gender: user.gender,
+            user_bio: user.bio,
+            user_private_mode: user.private_mode || false,
             location_id: location.id,
             location_name: location.name,
             is_active: true
@@ -195,41 +186,14 @@ export default function Home() {
         toast.success('Checked out successfully');
     };
 
-    const handleDismissPing = async (pingId) => { await refetchPings(); };
-
-    // ------------------------------------------------------------------
-    // 8. THE BOUNCER (Conditional Rendering happens LAST)
-    // ------------------------------------------------------------------
-
-    // A. Show Loading Spinner
-    if (loading) {
-        return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-                <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
-            </div>
-        );
-    }
-
-    // B. Show Landing Page (Logged Out)
-    if (!user) {
-        return <Landing />;
-    }
-
-    // C. Redirect to Profile Setup (Incomplete Profile)
-    // Using window.location to redirect, we don't need to import the component.
-    if (!user.gender || !user.full_name) {
-        window.location.href = '/profile-setup';
-        return null;
-    }
-
-    // D. Main App Render (Logged In)
-    const isFemale = user?.gender === 'female';
-    const locationCheckIns = selectedLocation ? getCheckInsForLocation(selectedLocation.id, true) : [];
+    // 9. MAIN RENDER
+    const isFemale = user.gender === 'female';
+    const locationCheckIns = selectedLocation ? getCheckInsForLocation(selectedLocation.id) : [];
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950">
             <div className="max-w-lg mx-auto px-4 py-6 pb-24">
-                {/* Simplified Header for brevity, keep your full UI here */}
+                {/* Header */}
                  <div className="flex items-center justify-between mb-6">
                     {selectedLocation ? (
                         <Button variant="ghost" onClick={() => setSelectedLocation(null)} className="text-white">
@@ -246,13 +210,18 @@ export default function Home() {
                     </Button>
                 </div>
                 
-                {/* If selectedLocation is active, show details, else show list. 
-                    (Re-using the logic from your previous file to ensure UI renders) 
-                */}
+                {/* MATCH NOTIFICATIONS */}
+                {matchedPings.length > 0 && !selectedLocation && (
+                    <div className="mb-6"><MatchNotifications matches={matchedPings} onDismiss={() => refetchMatches()} /></div>
+                )}
+                {myPings.length > 0 && !selectedLocation && (
+                    <div className="mb-6"><PingNotifications pings={myPings} onDismiss={() => refetchPings()} /></div>
+                )}
+
+                {/* LOCATIONS LIST */}
                 <AnimatePresence mode="wait">
                     {!selectedLocation ? (
                          <motion.div key="locations" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-                            {/* Render Locations List */}
                             {locations.map(loc => (
                                 <LocationCard 
                                     key={loc.id} 
@@ -264,15 +233,43 @@ export default function Home() {
                                     onClick={() => setSelectedLocation(loc)} 
                                 />
                             ))}
-                            {locations.length === 0 && <p className="text-center text-slate-500">No locations found</p>}
                          </motion.div>
                     ) : (
+                        /* LOCATION DETAIL */
                         <motion.div key="detail" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-                            {/* Render Location Detail (Simplified for safety) */}
                             <div className="relative rounded-2xl overflow-hidden h-48">
-                                <img src={selectedLocation.image_url || 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=800'} className="w-full h-full object-cover" />
+                                <img src={selectedLocation.image_url || 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=800'} className="w-full h-full object-cover" alt={selectedLocation.name} />
                             </div>
-                            <Button onClick={() => handleCheckIn(selectedLocation)} className="w-full h-14 bg-amber-500 text-black font-bold rounded-xl">Check In</Button>
+                            
+                            {/* Check In Button */}
+                            {myActiveCheckIn?.location_id !== selectedLocation.id ? (
+                                isNearLocation(selectedLocation) ? (
+                                    <Button onClick={() => handleCheckIn(selectedLocation)} disabled={checkingIn} className="w-full h-14 bg-amber-500 text-black font-bold rounded-xl">
+                                        {checkingIn ? 'Checking In...' : 'Check In Here'}
+                                    </Button>
+                                ) : (
+                                    <div className="p-4 bg-slate-800 rounded-xl text-center text-slate-400">Too far to check in</div>
+                                )
+                            ) : (
+                                <Button onClick={handleCheckOut} disabled={checkingOut} variant="outline" className="w-full h-14 border-red-500 text-red-400">
+                                    {checkingOut ? 'Leaving...' : 'Leave Location'}
+                                </Button>
+                            )}
+
+                            {/* User Grid (Only if Female) */}
+                            {isFemale && (
+                                <div className="space-y-4">
+                                    <h3 className="text-white font-bold flex items-center gap-2"><Zap className="w-4 h-4 text-amber-500"/> People Here</h3>
+                                    <UserGrid 
+                                        users={locationCheckIns} 
+                                        currentUser={user} 
+                                        locationId={selectedLocation.id} 
+                                        locationName={selectedLocation.name}
+                                        existingPings={sentPings}
+                                        onPingSent={() => { refetchSentPings(); refetchMatches(); }}
+                                    />
+                                </div>
+                            )}
                         </motion.div>
                     )}
                 </AnimatePresence>
