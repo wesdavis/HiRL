@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MapPin, Zap, ArrowLeft, RefreshCw, Loader2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
@@ -31,11 +31,7 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
 };
 
 export default function Home() {
-    // =========================================================
-    // SECTION 1: ALL HOOKS (MUST BE FIRST - NO RETURNS ALLOWED)
-    // =========================================================
-    
-    // State Hooks
+    // 1. ALL HOOKS FIRST
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [selectedLocation, setSelectedLocation] = useState(null);
@@ -46,7 +42,7 @@ export default function Home() {
     const [loadingGeo, setLoadingGeo] = useState(true);
     const checkInIdRef = useRef(null);
 
-    // Effect Hook: Load User
+    // Auth Load
     useEffect(() => {
         const loadUser = async () => {
             try {
@@ -61,10 +57,9 @@ export default function Home() {
         loadUser();
     }, []);
 
-    // Effect Hook: Geolocation
+    // Geolocation
     useEffect(() => {
         if (!navigator.geolocation) {
-            setGeoError('Geolocation not supported');
             setLoadingGeo(false);
             return;
         }
@@ -78,7 +73,6 @@ export default function Home() {
                 setGeoError(null);
             },
             (error) => {
-                // Don't block the app, just note the error
                 setLoadingGeo(false);
             },
             { enableHighAccuracy: true, maximumAge: 10000, timeout: 10000 }
@@ -86,36 +80,30 @@ export default function Home() {
         return () => navigator.geolocation.clearWatch(watchId);
     }, []);
 
-    // Safe Fetch Logic
+    // Queries
     const canFetch = !!user && !!user.email;
-
-    // Query Hooks (These must run every time, use 'enabled' to toggle)
     const { data: locations = [] } = useQuery({
         queryKey: ['locations'],
         queryFn: () => base44.entities.Location.filter({ is_active: true }),
         enabled: canFetch
     });
-
     const { data: allCheckIns = [], refetch: refetchCheckIns } = useQuery({
         queryKey: ['checkins'],
         queryFn: () => base44.entities.CheckIn.filter({ is_active: true }),
         enabled: canFetch,
         refetchInterval: 5000
     });
-
     const { data: myPings = [], refetch: refetchPings } = useQuery({
         queryKey: ['my-pings', user?.email],
         queryFn: () => base44.entities.Ping.filter({ to_user_email: user?.email, status: 'pending' }),
         enabled: canFetch,
         refetchInterval: 3000 
     });
-
     const { data: sentPings = [], refetch: refetchSentPings } = useQuery({
         queryKey: ['sent-pings', user?.email],
         queryFn: () => base44.entities.Ping.filter({ from_user_email: user?.email }),
         enabled: canFetch
     });
-
     const { data: matchedPings = [], refetch: refetchMatches } = useQuery({
         queryKey: ['matched-pings', user?.email],
         queryFn: () => base44.entities.Ping.filter({ from_user_email: user?.email, status: 'matched' }),
@@ -123,36 +111,27 @@ export default function Home() {
         refetchInterval: 3000
     });
 
-    // Effect Hook: Cleanup Check-ins
     const myActiveCheckIn = allCheckIns?.find(c => c.user_email === user?.email && c.is_active) || null;
     useEffect(() => {
         checkInIdRef.current = myActiveCheckIn?.id || null;
     }, [myActiveCheckIn?.id]);
 
-    // =========================================================
-    // SECTION 2: LOGIC & HELPERS (NO RETURNS YET)
-    // =========================================================
-
+    // Helpers
     const getDistanceToLocation = (location) => {
         if (!userLocation || !location?.latitude) return null;
         return calculateDistance(userLocation.latitude, userLocation.longitude, location.latitude, location.longitude);
     };
-
     const isNearLocation = (location) => {
         const distance = getDistanceToLocation(location);
         return distance !== null && distance <= CHECKIN_RADIUS_METERS;
     };
-    
     const getCheckInsForLocation = (locationId) => {
         if (!allCheckIns) return [];
         return allCheckIns.filter(c => c.location_id === locationId && c.is_active && c.user_email !== user.email);
     };
-
     const handleCheckIn = async (location) => {
         setCheckingIn(true);
-        if (myActiveCheckIn) {
-            await base44.entities.CheckIn.update(myActiveCheckIn.id, { is_active: false, checked_out_at: new Date().toISOString() });
-        }
+        if (myActiveCheckIn) await base44.entities.CheckIn.update(myActiveCheckIn.id, { is_active: false, checked_out_at: new Date().toISOString() });
         await base44.entities.CheckIn.create({
             user_email: user.email,
             user_name: user.full_name,
@@ -168,7 +147,6 @@ export default function Home() {
         setCheckingIn(false);
         toast.success(`Checked in at ${location.name}`);
     };
-
     const handleCheckOut = async () => {
         if (!myActiveCheckIn) return;
         setCheckingOut(true);
@@ -180,10 +158,10 @@ export default function Home() {
     };
 
     // =========================================================
-    // SECTION 3: THE BOUNCER (RETURNS START HERE)
+    // THE BOUNCER: ROUTING LOGIC STARTS HERE (NO HOOKS BELOW)
     // =========================================================
 
-    // 1. Still Loading Auth? Show Spinner.
+    // 1. Loading? Show Spinner
     if (loading) {
         return (
             <div className="min-h-screen bg-slate-950 flex items-center justify-center">
@@ -192,22 +170,21 @@ export default function Home() {
         );
     }
 
-    // 2. Not Logged In? Show Landing Page.
+    // 2. Not Logged In? Show Landing Page
     if (!user) {
         return <Landing />;
     }
 
-    // 3. Incomplete Profile? Redirect.
+    // 3. Logged In But Empty Profile? Redirect to Setup
+    // This enforces the rule: No Gender/Name = No Home Access.
     if (!user.gender || !user.full_name) {
-        // Use standard redirect to avoid router conflicts
         window.location.href = '/profile-setup';
-        return null; 
+        return null;
     }
 
-    // 4. Main App Render (Logged In & Valid)
+    // 4. Logged In & Full Profile? Show Home
     const isFemale = user.gender === 'female';
-    const locationCheckIns = selectedLocation ? getCheckInsForLocation(selectedLocation.id) : [];
-
+    
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950">
             <div className="max-w-lg mx-auto px-4 py-6 pb-24">
@@ -273,7 +250,7 @@ export default function Home() {
                                 <div className="space-y-4">
                                     <h3 className="text-white font-bold flex items-center gap-2"><Zap className="w-4 h-4 text-amber-500"/> People Here</h3>
                                     <UserGrid 
-                                        users={locationCheckIns} 
+                                        users={selectedLocation ? getCheckInsForLocation(selectedLocation.id) : []} 
                                         currentUser={user} 
                                         locationId={selectedLocation.id} 
                                         locationName={selectedLocation.name}
