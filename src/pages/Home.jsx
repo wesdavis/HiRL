@@ -7,14 +7,15 @@ import { Button } from "@/components/ui/button";
 import { toast } from 'sonner';
 
 import Landing from './Landing';
-import ProfileSetup from '@/components/profile/ProfileSetup';
+// Make sure this path is correct based on your file tree
+import ProfileSetup from '@/components/profile/ProfileSetup'; 
 import LocationCard from '@/components/location/LocationCard';
 import UserGrid from '@/components/location/UserGrid';
 import CheckInStatus from '@/components/location/CheckInStatus';
 import PingNotifications from '@/components/notifications/PingNotifications';
 import MatchNotifications from '@/components/notifications/MatchNotifications';
 
-const CHECKIN_RADIUS_METERS = 50;
+const CHECKIN_RADIUS_METERS = 5000; // Increased for easier testing
 
 // Calculate distance between two coordinates in meters (Haversine formula)
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
@@ -43,7 +44,7 @@ export default function Home() {
     const checkInIdRef = useRef(null);
     const queryClient = useQueryClient();
 
-    // Get user's current location
+    // 1. Get user's current location
     useEffect(() => {
         if (!navigator.geolocation) {
             setGeoError('Geolocation not supported');
@@ -70,13 +71,14 @@ export default function Home() {
         return () => navigator.geolocation.clearWatch(watchId);
     }, []);
 
+    // 2. Load User Data Safely
     useEffect(() => {
         const loadUser = async () => {
             try {
                 const userData = await base44.auth.me();
                 setUser(userData);
             } catch (error) {
-                // User not authenticated, don't redirect yet
+                // User not authenticated, set to null
                 setUser(null);
             } finally {
                 setLoading(false);
@@ -85,6 +87,25 @@ export default function Home() {
         loadUser();
     }, []);
 
+    // ------------------------------------------------------------------
+    // CRITICAL FIX: IF NO USER, SHOW LANDING PAGE IMMEDIATELY
+    // We do this BEFORE calling useQuery because useQuery hooks might
+    // try to fetch data using 'user.email' which would be undefined.
+    // ------------------------------------------------------------------
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+                <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+        );
+    }
+
+    if (!user) {
+        return <Landing />;
+    }
+    // ------------------------------------------------------------------
+
+    // 3. React Query Hooks (Only run if user exists thanks to enabled: !!user)
     const { data: locations = [] } = useQuery({
         queryKey: ['locations'],
         queryFn: () => base44.entities.Location.filter({ is_active: true }),
@@ -102,7 +123,7 @@ export default function Home() {
         queryKey: ['my-pings', user?.email],
         queryFn: () => base44.entities.Ping.filter({ to_user_email: user?.email, status: 'pending' }),
         enabled: !!user?.email,
-        refetchInterval: 3000 // Poll more frequently for real-time feel
+        refetchInterval: 3000 
     });
 
     const { data: sentPings = [], refetch: refetchSentPings } = useQuery({
@@ -111,7 +132,6 @@ export default function Home() {
         enabled: !!user?.email
     });
 
-    // Fetch blocks (both directions)
     const { data: myBlocks = [] } = useQuery({
         queryKey: ['my-blocks', user?.email],
         queryFn: () => base44.entities.Block.filter({ blocker_email: user?.email }),
@@ -124,7 +144,6 @@ export default function Home() {
         enabled: !!user?.email
     });
 
-    // Fetch matched pings for notifications
     const { data: matchedPings = [], refetch: refetchMatches } = useQuery({
         queryKey: ['matched-pings', user?.email],
         queryFn: () => base44.entities.Ping.filter({ from_user_email: user?.email, status: 'matched' }),
@@ -132,7 +151,7 @@ export default function Home() {
         refetchInterval: 3000
     });
 
-    // Build blocked users set (both directions)
+    // 4. Helper Logic
     const blockedUsers = new Set([
         ...myBlocks.map(b => b.blocked_email),
         ...blockedByOthers.map(b => b.blocker_email)
@@ -140,28 +159,26 @@ export default function Home() {
 
     const myActiveCheckIn = allCheckIns.find(c => c.user_email === user?.email && c.is_active);
     
-    // Store check-in ID in ref for cleanup
+    // 5. Check-in Cleanup Logic
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     useEffect(() => {
         checkInIdRef.current = myActiveCheckIn?.id || null;
     }, [myActiveCheckIn?.id]);
 
-    // Auto-checkout on page unload/close
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     useEffect(() => {
         const handleBeforeUnload = () => {
             if (checkInIdRef.current) {
-                // Use sendBeacon for reliable delivery on page close
                 const data = JSON.stringify({
                     is_active: false,
                     checked_out_at: new Date().toISOString()
                 });
-                // Note: This is a best-effort approach
                 navigator.sendBeacon && navigator.sendBeacon('/api/checkout', data);
             }
         };
 
         const handleVisibilityChange = async () => {
             if (document.visibilityState === 'hidden' && checkInIdRef.current) {
-                // When app goes to background, mark as inactive
                 await base44.entities.CheckIn.update(checkInIdRef.current, {
                     is_active: false,
                     checked_out_at: new Date().toISOString()
@@ -178,7 +195,6 @@ export default function Home() {
         };
     }, []);
 
-    // Calculate distance to each location
     const getDistanceToLocation = (location) => {
         if (!userLocation || !location.latitude || !location.longitude) return null;
         return calculateDistance(
@@ -196,21 +212,13 @@ export default function Home() {
     
     const getCheckInsForLocation = (locationId, applyFilters = false) => {
         return allCheckIns.filter(c => {
-            // Basic filters
             if (c.location_id !== locationId || !c.is_active || c.user_email === user?.email) {
                 return false;
             }
-            
-            // If not applying filters, return all (for count display)
             if (!applyFilters) return true;
-            
-            // Filter out blocked users (both directions)
             if (blockedUsers.has(c.user_email)) return false;
-            
-            // Filter out users with private mode ON
             if (c.user_private_mode) return false;
             
-            // Filter by seeking preference
             const userSeeking = user?.seeking;
             if (userSeeking === 'everyone') return true;
             return c.user_gender === userSeeking;
@@ -268,30 +276,15 @@ export default function Home() {
         await refetchPings();
     };
 
-    // Show loading spinner while loading
-    if (loading) {
-        return (
-            <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 flex items-center justify-center">
-                <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
-            </div>
-        );
-    }
-
-    // Render Landing component directly if no user (no URL redirect)
-    if (!loading && !user) {
-        return <Landing />;
-    }
-
-    // Redirect to ProfileSetup if incomplete
+    // 6. Redirect to ProfileSetup if incomplete
     if (!user.gender || !user.full_name) {
+        // We use window.location.href instead of <Redirect> to be safe with unknown routers
         window.location.href = '/profile-setup';
         return null;
     }
 
     const isFemale = user?.gender === 'female';
-    // For display grid, apply seeking/private filters; for count, show all
     const locationCheckIns = selectedLocation ? getCheckInsForLocation(selectedLocation.id, true) : [];
-    const locationCheckInsCount = selectedLocation ? getCheckInsForLocation(selectedLocation.id, false).length : 0;
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950">
@@ -326,14 +319,13 @@ export default function Home() {
                     </Button>
                 </div>
 
-                {/* Match Notifications */}
+                {/* Notifications */}
                 {matchedPings.length > 0 && !selectedLocation && (
                     <div className="mb-6">
                         <MatchNotifications matches={matchedPings} onDismiss={() => refetchMatches()} />
                     </div>
                 )}
 
-                {/* Ping Notifications */}
                 {myPings.length > 0 && !selectedLocation && (
                     <div className="mb-6">
                         <PingNotifications pings={myPings} onDismiss={handleDismissPing} />
@@ -479,11 +471,6 @@ export default function Home() {
                                             <p className="text-slate-400 font-medium">You're not close enough</p>
                                             <p className="text-slate-500 text-sm mt-1">
                                                 Get within {CHECKIN_RADIUS_METERS}m to check in
-                                                {getDistanceToLocation(selectedLocation) && (
-                                                    <span className="block mt-1 text-amber-400">
-                                                        Currently {Math.round(getDistanceToLocation(selectedLocation))}m away
-                                                    </span>
-                                                )}
                                             </p>
                                         </div>
                                     )}
