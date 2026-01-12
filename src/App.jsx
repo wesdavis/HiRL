@@ -43,27 +43,36 @@ const AuthenticatedApp = () => {
   // Render the main app
   return (
     <Routes>
+      {/* 1. The Main Route (Home) */}
       <Route path="/" element={
-        <LayoutWrapper currentPageName={mainPageKey}>
+        <LayoutWrapper currentPageName="Home">
           <MainPage />
         </LayoutWrapper>
       } />
-      {Object.entries(Pages).map(([path, Page]) => (
-        <Route
-          key={path}
-          path={`/${path}`}
-          element={
-            <LayoutWrapper currentPageName={path}>
-              <Page />
-            </LayoutWrapper>
-          }
-        />
+      
+      {/* 2. Safety Redirects */}
+      <Route path="/landing" element={<Navigate to="/" replace />} />
+      <Route path="/home" element={<Navigate to="/" replace />} />
+
+      {/* 3. Dynamic Pages (HIDDEN DEV TOOLS) */}
+      {Object.entries(Pages)
+        // FILTER OUT DEVTOOLS HERE:
+        .filter(([path]) => path !== 'DevTools' && path !== 'dev-tools') 
+        .map(([path, Page]) => (
+          <Route
+            key={path}
+            path={`/${path}`}
+            element={
+              <LayoutWrapper currentPageName={path}>
+                <Page />
+              </LayoutWrapper>
+            }
+          />
       ))}
+      
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
-};
-
 
 function App() {
 
