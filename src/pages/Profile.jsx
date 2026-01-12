@@ -93,12 +93,8 @@ export default function Profile() {
     };
 
     const handleLogout = () => {
-        // 1. Clear local state immediately
-        if (setUser) setUser(null);
-        localStorage.clear();
-
-        // 2. HARD RELOAD to the root. 
-        // This forces the browser to dump the current memory and load fresh.
+        // Force the browser to reload at the root. 
+        // Do NOT use base44.auth.logout() directly here, it causes the white screen.
         window.location.href = '/';
     };
 
