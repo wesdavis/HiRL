@@ -93,17 +93,14 @@ export default function Profile() {
     };
 
     const handleLogout = () => {
-        base44.auth.logout('/');
-    };
+        // 1. Clear local state immediately
+        if (setUser) setUser(null);
+        localStorage.clear();
 
-    // 5. GUARD CLAUSES (Must be AFTER all hooks)
-    if (loading) {
-        return (
-            <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 flex items-center justify-center">
-                <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
-            </div>
-        );
-    }
+        // 2. HARD RELOAD to the root. 
+        // This forces the browser to dump the current memory and load fresh.
+        window.location.href = '/';
+    };
 
     if (!user) {
         return <div className='min-h-screen bg-slate-950' />;
