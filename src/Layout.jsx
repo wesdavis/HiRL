@@ -1,15 +1,36 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { createPageUrl } from './utils'; 
 import { Home, User } from 'lucide-react';
+import { base44 } from '@/api/base44Client';
 
 export default function Layout({ children }) {
     const location = useLocation();
+    const [isLoggedIn, setIsLoggedIn] = useState(false);
     
-    // Only show the bottom buttons if we are NOT on the main login screen
-    // Since 'Landing' and 'Home' are both at '/', we hide nav on '/' for safety 
-    // until you are logged in.
-    const showNav = location.pathname !== '/' && location.pathname !== '/landing';
+    // Check if we have a session whenever the URL changes
+    useEffect(() => {
+        const checkAuth = async () => {
+            try {
+                // If we can get user data, we are logged in
+                const user = await base44.auth.me();
+                setIsLoggedIn(!!user);
+            } catch {
+                setIsLoggedIn(false);
+            }
+        };
+        checkAuth();
+    }, [location.pathname]);
+
+    // LOGIC: 
+    // 1. Hide on DevTools (always)
+    // 2. Hide on Root ('/') IF we are NOT logged in (that's the Landing Page view)
+    // 3. Otherwise (like on /location/123), SHOW it if we are logged in.
+    const isDevTools = location.pathname === '/dev-tools';
+    const isRoot = location.pathname === '/';
+    
+    // Show Nav if: Not DevTools AND (Not Root OR User is Logged In)
+    const showNav = !isDevTools && (!isRoot || isLoggedIn);
 
     const navItems = [
         { name: 'Home', icon: Home, page: 'Home' },
@@ -18,7 +39,7 @@ export default function Layout({ children }) {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950">
-            <main>{children}</main>
+            <main className={showNav ? "pb-20" : ""}>{children}</main>
             
             {showNav && (
                 <nav className="fixed bottom-0 left-0 right-0 z-50">
