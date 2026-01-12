@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MapPin, Zap, ArrowLeft, RefreshCw, Loader2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,9 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
 };
 
 export default function Home() {
-    // 1. ALL HOOKS FIRST
+    // ------------------------------------------------------------
+    // SECTION 1: ALL HOOKS FIRST (Fixes the Render Error)
+    // ------------------------------------------------------------
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [selectedLocation, setSelectedLocation] = useState(null);
@@ -42,7 +44,7 @@ export default function Home() {
     const [loadingGeo, setLoadingGeo] = useState(true);
     const checkInIdRef = useRef(null);
 
-    // Auth Load
+    // Auth Check
     useEffect(() => {
         const loadUser = async () => {
             try {
@@ -82,28 +84,33 @@ export default function Home() {
 
     // Queries
     const canFetch = !!user && !!user.email;
+    
     const { data: locations = [] } = useQuery({
         queryKey: ['locations'],
         queryFn: () => base44.entities.Location.filter({ is_active: true }),
         enabled: canFetch
     });
+    
     const { data: allCheckIns = [], refetch: refetchCheckIns } = useQuery({
         queryKey: ['checkins'],
         queryFn: () => base44.entities.CheckIn.filter({ is_active: true }),
         enabled: canFetch,
         refetchInterval: 5000
     });
+    
     const { data: myPings = [], refetch: refetchPings } = useQuery({
         queryKey: ['my-pings', user?.email],
         queryFn: () => base44.entities.Ping.filter({ to_user_email: user?.email, status: 'pending' }),
         enabled: canFetch,
         refetchInterval: 3000 
     });
+    
     const { data: sentPings = [], refetch: refetchSentPings } = useQuery({
         queryKey: ['sent-pings', user?.email],
         queryFn: () => base44.entities.Ping.filter({ from_user_email: user?.email }),
         enabled: canFetch
     });
+    
     const { data: matchedPings = [], refetch: refetchMatches } = useQuery({
         queryKey: ['matched-pings', user?.email],
         queryFn: () => base44.entities.Ping.filter({ from_user_email: user?.email, status: 'matched' }),
@@ -112,23 +119,27 @@ export default function Home() {
     });
 
     const myActiveCheckIn = allCheckIns?.find(c => c.user_email === user?.email && c.is_active) || null;
+    
     useEffect(() => {
         checkInIdRef.current = myActiveCheckIn?.id || null;
     }, [myActiveCheckIn?.id]);
 
-    // Helpers
+    // Helpers (Non-hooks)
     const getDistanceToLocation = (location) => {
         if (!userLocation || !location?.latitude) return null;
         return calculateDistance(userLocation.latitude, userLocation.longitude, location.latitude, location.longitude);
     };
+    
     const isNearLocation = (location) => {
         const distance = getDistanceToLocation(location);
         return distance !== null && distance <= CHECKIN_RADIUS_METERS;
     };
+    
     const getCheckInsForLocation = (locationId) => {
         if (!allCheckIns) return [];
         return allCheckIns.filter(c => c.location_id === locationId && c.is_active && c.user_email !== user.email);
     };
+    
     const handleCheckIn = async (location) => {
         setCheckingIn(true);
         if (myActiveCheckIn) await base44.entities.CheckIn.update(myActiveCheckIn.id, { is_active: false, checked_out_at: new Date().toISOString() });
@@ -147,6 +158,7 @@ export default function Home() {
         setCheckingIn(false);
         toast.success(`Checked in at ${location.name}`);
     };
+    
     const handleCheckOut = async () => {
         if (!myActiveCheckIn) return;
         setCheckingOut(true);
@@ -157,11 +169,11 @@ export default function Home() {
         toast.success('Checked out successfully');
     };
 
-    // =========================================================
-    // THE BOUNCER: ROUTING LOGIC STARTS HERE (NO HOOKS BELOW)
-    // =========================================================
+    // ------------------------------------------------------------
+    // SECTION 2: THE BOUNCER (RETURNS START HERE)
+    // ------------------------------------------------------------
 
-    // 1. Loading? Show Spinner
+    // 1. Loading -> Spinner
     if (loading) {
         return (
             <div className="min-h-screen bg-slate-950 flex items-center justify-center">
@@ -170,19 +182,18 @@ export default function Home() {
         );
     }
 
-    // 2. Not Logged In? Show Landing Page
+    // 2. No User -> Landing Page
     if (!user) {
         return <Landing />;
     }
 
-    // 3. Logged In But Empty Profile? Redirect to Setup
-    // This enforces the rule: No Gender/Name = No Home Access.
+    // 3. Incomplete Profile -> Profile Setup
     if (!user.gender || !user.full_name) {
         window.location.href = '/profile-setup';
         return null;
     }
 
-    // 4. Logged In & Full Profile? Show Home
+    // 4. Everything Good -> Show App
     const isFemale = user.gender === 'female';
     
     return (
