@@ -12,8 +12,8 @@ export const AuthProvider = ({ children }) => {
   const [authError, setAuthError] = useState(null);
 
   useEffect(() => {
-    // On mount, ALWAYS ask the server "Who am I?"
-    // We ignore appParams.token because on mobile it might be in a cookie.
+    // FIX: Always check auth directly. Do not rely on appParams.token 
+    // because mobile browsers often store the token in a cookie instead.
     checkUserAuth();
   }, []);
 
@@ -22,11 +22,11 @@ export const AuthProvider = ({ children }) => {
       setIsLoadingAuth(true);
       const currentUser = await base44.auth.me();
       
-      // If code gets here, we are logged in.
+      // If we get here, we are logged in.
       setUser(currentUser);
       setIsAuthenticated(true);
     } catch (error) {
-      // If code gets here, we are logged out.
+      // If we get here, we are logged out.
       setUser(null);
       setIsAuthenticated(false);
       
@@ -39,17 +39,13 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    // CRITICAL FIX FOR WHITE SCREEN CRASH:
-    // Do NOT call setUser(null) here. 
-    // If we update state, React tries to re-render the Home page with "null" user 
-    // for a split second before the reload happens, which causes the crash.
-    // We just wipe storage and force the browser to reload.
-    
+    // FIX: Hard Reload. This prevents the "White Screen" crash.
     localStorage.clear();
     window.location.href = '/'; 
   };
 
   const navigateToLogin = () => {
+    // FIX: Use full URL for mobile redirection safety
     base44.auth.redirectToLogin(window.location.href);
   };
 
