@@ -13,7 +13,8 @@ const { Pages, Layout, mainPage } = pagesConfig;
 
 // FIX: Force 'Home' to be the main page.
 const mainPageKey = 'Home';
-const MainPage = Pages['Home'];
+// Safety Check: If 'Home' isn't found in the Pages list, show a basic error instead of crashing.
+const MainPage = Pages['Home'] || (() => <div className="text-white p-10">Error: Home Page Not Found. Check pages.config.js</div>);
 
 const LayoutWrapper = ({ children, currentPageName }) => Layout ?
   <Layout currentPageName={currentPageName}>{children}</Layout>
