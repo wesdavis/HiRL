@@ -9,6 +9,9 @@ import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 
+// 1. IMPORT THE NEW PAGE
+import ProfileSetup from './pages/ProfileSetup';
+
 const { Pages, Layout, mainPage } = pagesConfig;
 
 // FIX: Force 'Home' to be the main page.
@@ -48,11 +51,17 @@ const AuthenticatedApp = () => {
         </LayoutWrapper>
       } />
 
-      {/* 2. Safety Redirects (Kill the loop) */}
+      {/* 2. THE NEW PROFILE SETUP ROUTE */}
+      <Route path="/profile-setup" element={
+        // No LayoutWrapper because we want a clean full-screen form
+        <ProfileSetup />
+      } />
+
+      {/* 3. Safety Redirects (Kill the loop) */}
       <Route path="/landing" element={<Navigate to="/" replace />} />
       <Route path="/home" element={<Navigate to="/" replace />} />
 
-      {/* 3. Render all pages EXCEPT DevTools */}
+      {/* 4. Render all pages EXCEPT DevTools */}
       {Object.entries(Pages)
         .filter(([path]) => path !== 'DevTools' && path !== 'dev-tools') // HIDDEN
         .map(([path, Page]) => (
@@ -67,7 +76,7 @@ const AuthenticatedApp = () => {
           />
       ))}
 
-      {/* 4. Catch-all for 404s */}
+      {/* 5. Catch-all for 404s */}
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
