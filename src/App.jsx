@@ -3,21 +3,17 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
 import NavigationTracker from '@/lib/NavigationTracker'
 import { pagesConfig } from './pages.config'
-// ADDED: Navigate import for safety redirects
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 
-// 1. IMPORT THE NEW PAGE
+// 1. IMPORT THE PROFILE SETUP PAGE
 import ProfileSetup from './pages/ProfileSetup';
 
 const { Pages, Layout, mainPage } = pagesConfig;
-
-// FIX: Force 'Home' to be the main page.
 const mainPageKey = 'Home';
-// Safety Check: If 'Home' isn't found in the Pages list, show a basic error instead of crashing.
-const MainPage = Pages['Home'] || (() => <div className="text-white p-10">Error: Home Page Not Found. Check pages.config.js</div>);
+const MainPage = Pages['Home'] || (() => <div className="text-white p-10">Error: Home Page Not Found.</div>);
 
 const LayoutWrapper = ({ children, currentPageName }) => Layout ?
   <Layout currentPageName={currentPageName}>{children}</Layout>
@@ -26,7 +22,6 @@ const LayoutWrapper = ({ children, currentPageName }) => Layout ?
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError } = useAuth();
 
-  // Show loading spinner
   if (isLoadingPublicSettings || isLoadingAuth) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-slate-950">
@@ -35,11 +30,8 @@ const AuthenticatedApp = () => {
     );
   }
 
-  // Handle authentication errors
-  if (authError) {
-    if (authError.type === 'user_not_registered') {
-      return <UserNotRegisteredError />;
-    }
+  if (authError && authError.type === 'user_not_registered') {
+    return <UserNotRegisteredError />;
   }
 
   return (
@@ -51,19 +43,16 @@ const AuthenticatedApp = () => {
         </LayoutWrapper>
       } />
 
-      {/* 2. THE NEW PROFILE SETUP ROUTE */}
-      <Route path="/profile-setup" element={
-        // No LayoutWrapper because we want a clean full-screen form
-        <ProfileSetup />
-      } />
+      {/* 2. THE PROFILE SETUP ROUTE (Add this!) */}
+      <Route path="/profile-setup" element={<ProfileSetup />} />
 
-      {/* 3. Safety Redirects (Kill the loop) */}
+      {/* 3. Safety Redirects */}
       <Route path="/landing" element={<Navigate to="/" replace />} />
       <Route path="/home" element={<Navigate to="/" replace />} />
 
-      {/* 4. Render all pages EXCEPT DevTools */}
+      {/* 4. Other Pages */}
       {Object.entries(Pages)
-        .filter(([path]) => path !== 'DevTools' && path !== 'dev-tools') // HIDDEN
+        .filter(([path]) => path !== 'DevTools' && path !== 'dev-tools')
         .map(([path, Page]) => (
           <Route
             key={path}
@@ -76,7 +65,6 @@ const AuthenticatedApp = () => {
           />
       ))}
 
-      {/* 5. Catch-all for 404s */}
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
