@@ -3,12 +3,14 @@ export function createPageUrl(pageName) {
   
   const name = pageName.toLowerCase();
 
-  // Explicit mappings to fix navigation errors
+  // CRITICAL FIX: Map 'home' to root '/'
   if (name === 'home') return '/';
-  if (name === 'landing') return '/landing';
+  
+  // Landing also goes to root now
+  if (name === 'landing') return '/';
+  
   if (name === 'profile') return '/profile';
-  if (name === 'devtools') return '/dev-tools';
+  if (name === 'devtools' || name === 'dev-tools') return '/dev-tools';
 
-  // Default fallback
   return `/${name}`;
 }
