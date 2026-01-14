@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MapPin, Zap, ArrowLeft, RefreshCw, Loader2, Search } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { toast } from 'sonner';
+import { useAuth } from '@/lib/AuthContext'; // IMPORT CONTEXT
 
+// Imports
 import Landing from './Landing'; 
 import LocationCard from '@/components/location/LocationCard';
 import UserGrid from '@/components/location/UserGrid';
@@ -15,6 +17,7 @@ import MatchNotifications from '@/components/notifications/MatchNotifications';
 
 const CHECKIN_RADIUS_METERS = 5000;
 
+// Helper to calc distance
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
     if (!lat1 || !lon1 || !lat2 || !lon2) return null;
     const R = 6371e3;
@@ -30,9 +33,10 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
 };
 
 export default function Home() {
-    // 1. ALL HOOKS
-    const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true);
+    // 1. USE CONTEXT (Source of Truth)
+    const { user, isLoadingAuth } = useAuth();
+
+    // 2. LOCAL STATE
     const [selectedLocation, setSelectedLocation] = useState(null);
     const [checkingIn, setCheckingIn] = useState(false);
     const [checkingOut, setCheckingOut] = useState(false);
@@ -40,22 +44,7 @@ export default function Home() {
     const [loadingGeo, setLoadingGeo] = useState(true);
     const checkInIdRef = useRef(null);
 
-    // Auth
-    useEffect(() => {
-        const loadUser = async () => {
-            try {
-                const userData = await base44.auth.me();
-                setUser(userData);
-            } catch (error) {
-                setUser(null);
-            } finally {
-                setLoading(false);
-            }
-        };
-        loadUser();
-    }, []);
-
-    // GPS
+    // 3. GEOLOCATION
     useEffect(() => {
         if (!navigator.geolocation) { setLoadingGeo(false); return; }
         navigator.geolocation.watchPosition(
@@ -67,8 +56,9 @@ export default function Home() {
         );
     }, []);
 
-    // Queries
+    // 4. DATA FETCHING (Only if user exists)
     const canFetch = !!user && !!user.email;
+    
     const { data: locations = [], refetch: refetchLocations } = useQuery({
         queryKey: ['locations'], queryFn: () => base44.entities.Location.filter({ is_active: true }), enabled: canFetch
     });
@@ -88,7 +78,7 @@ export default function Home() {
     const myActiveCheckIn = allCheckIns?.find(c => c.user_email === user?.email && c.is_active) || null;
     useEffect(() => { checkInIdRef.current = myActiveCheckIn?.id || null; }, [myActiveCheckIn?.id]);
 
-    // Handlers
+    // Helpers
     const getDistanceToLocation = (loc) => userLocation && loc?.latitude ? calculateDistance(userLocation.latitude, userLocation.longitude, loc.latitude, loc.longitude) : null;
     const isNearLocation = (loc) => { const d = getDistanceToLocation(loc); return d !== null && d <= CHECKIN_RADIUS_METERS; };
     const getCheckInsForLocation = (locId) => allCheckIns.filter(c => c.location_id === locId && c.is_active && c.user_email !== user.email);
@@ -102,7 +92,6 @@ export default function Home() {
         });
         await refetchCheckIns(); setCheckingIn(false); toast.success(`Checked in at ${loc.name}`);
     };
-    
     const handleCheckOut = async () => {
         if (!myActiveCheckIn) return;
         setCheckingOut(true);
@@ -110,23 +99,22 @@ export default function Home() {
         await refetchCheckIns(); setSelectedLocation(null); setCheckingOut(false); toast.success('Checked out');
     };
 
-    // --------------------------------------------------------------------------------
-    // ROUTING & DISPLAY LOGIC
-    // --------------------------------------------------------------------------------
+    // =========================================================
+    // BOUNCER LOGIC
+    // =========================================================
 
-    // 1. Loading
-    if (loading) return <div className="min-h-screen bg-slate-950 flex items-center justify-center"><Loader2 className="w-8 h-8 text-amber-500 animate-spin" /></div>;
+    // 1. Loading -> Spinner
+    if (isLoadingAuth) return <div className="min-h-screen bg-slate-950 flex items-center justify-center"><Loader2 className="w-8 h-8 text-amber-500 animate-spin" /></div>;
 
-    // 2. Logged Out? -> Landing
+    // 2. Not Logged In -> Landing Page
     if (!user) return <Landing />;
 
-    // 3. New User? -> Profile Setup
+    // 3. Incomplete Profile -> Profile Setup
     if (!user.gender || !user.full_name) {
         window.location.href = '/profile-setup';
         return null;
     }
 
-    // 4. Logged In -> Main App
     const isFemale = user.gender === 'female';
 
     return (
@@ -142,27 +130,19 @@ export default function Home() {
                     <Button size="icon" variant="ghost" onClick={() => { refetchLocations(); refetchCheckIns(); refetchPings(); }} className="text-slate-400"><RefreshCw className="w-5 h-5" /></Button>
                 </div>
 
-                {/* Notifications */}
                 {matchedPings.length > 0 && !selectedLocation && <div className="mb-6"><MatchNotifications matches={matchedPings} onDismiss={() => refetchMatches()} /></div>}
                 {myPings.length > 0 && !selectedLocation && <div className="mb-6"><PingNotifications pings={myPings} onDismiss={() => refetchPings()} /></div>}
 
-                {/* Main Content */}
                 <AnimatePresence mode="wait">
                     {!selectedLocation ? (
                         <motion.div key="locations" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-                            {/* Empty State: Search Feature */}
+                            {/* Empty State: Search */}
                             {locations.length === 0 ? (
                                 <div className="text-center py-12 backdrop-blur-xl bg-white/5 rounded-3xl border border-white/10 p-8">
                                     <MapPin className="w-12 h-12 text-slate-600 mx-auto mb-4" />
                                     <h3 className="text-xl font-bold text-white mb-2">No Locations Found</h3>
-                                    <p className="text-slate-400 mb-6">We couldn't find any active venues near you.</p>
-                                    <Button 
-                                        onClick={() => refetchLocations()} 
-                                        className="w-full h-12 bg-amber-500 text-black font-bold rounded-xl"
-                                    >
-                                        <Search className="w-4 h-4 mr-2" />
-                                        Search Again
-                                    </Button>
+                                    <p className="text-slate-400 mb-6">We couldn't find any active venues.</p>
+                                    <Button onClick={() => refetchLocations()} className="w-full h-12 bg-amber-500 text-black font-bold rounded-xl"><Search className="w-4 h-4 mr-2" />Search Again</Button>
                                 </div>
                             ) : (
                                 locations.map(loc => (
@@ -171,7 +151,6 @@ export default function Home() {
                             )}
                         </motion.div>
                     ) : (
-                        /* Location Detail */
                         <motion.div key="detail" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
                             <div className="relative rounded-2xl overflow-hidden h-48"><img src={selectedLocation.image_url || 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=800'} className="w-full h-full object-cover" alt={selectedLocation.name} /></div>
                             {myActiveCheckIn?.location_id !== selectedLocation.id ? (
