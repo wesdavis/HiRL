@@ -14,34 +14,27 @@ import moment from 'moment';
 import { createPageUrl } from '@/components/utils';
 
 export default function Profile() {
-    // 1. ALL HOOKS MUST BE AT THE TOP
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [uploading, setUploading] = useState(false);
     const [formData, setFormData] = useState({});
 
-    // 2. Single Effect to fetch user AND set form data
     useEffect(() => {
         const fetchUser = async () => {
             try {
-                setLoading(true);
                 const userData = await base44.auth.me();
                 setUser(userData);
-                
-                // Initialize form data immediately
                 if (userData) {
                     setFormData({
-                        bio: userData?.bio || '',
-                        photo_url: userData?.photo_url || '',
-                        age: userData?.age || '',
-                        seeking: userData?.seeking || 'everyone',
-                        private_mode: userData?.private_mode || false
+                        bio: userData.bio || '',
+                        seeking: userData.seeking || 'everyone',
+                        gender: userData.gender || '',
+                        full_name: userData.full_name || '',
+                        private_mode: userData.private_mode || false
                     });
                 }
-            } catch (err) {
-                console.error("Failed to load user:", err);
-                window.location.href = '/landing';
+            } catch (e) {
+                console.error(e);
             } finally {
                 setLoading(false);
             }
@@ -97,9 +90,8 @@ export default function Profile() {
         window.location.href = '/';
     };
 
-    if (!user) {
-        return <div className='min-h-screen bg-slate-950' />;
-    }
+    if (loading) return <div className='min-h-screen bg-slate-950 flex items-center justify-center text-white'>Loading...</div>;
+    if (!user) return <div className='min-h-screen bg-slate-950' />; // Safety empty div if no user
 
     const totalCheckIns = myCheckIns.length;
     const totalPings = receivedPings.length;
