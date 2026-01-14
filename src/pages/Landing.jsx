@@ -6,8 +6,8 @@ import { base44 } from '@/api/base44Client';
 
 export default function Landing() {
     const handleGetStarted = () => {
-        // Redirect to login and come back to the homepage
-        base44.auth.redirectToLogin(window.location.origin);
+        // Redirect to login and come back to home page
+        base44.auth.redirectToLogin(window.location.origin + '/');
     };
 
     return (
