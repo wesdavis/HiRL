@@ -5,7 +5,6 @@ const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
 
   useEffect(() => {
@@ -14,34 +13,33 @@ export const AuthProvider = ({ children }) => {
 
   const checkUserAuth = async () => {
     try {
+      // If there is a 'code' in the URL (returning from login), ensure we stay loading
+      // until the SDK processes it.
       setIsLoadingAuth(true);
-      // Always ask the server. This fixes mobile cookie issues.
+      
       const currentUser = await base44.auth.me();
       setUser(currentUser);
-      setIsAuthenticated(true);
     } catch (error) {
       setUser(null);
-      setIsAuthenticated(false);
     } finally {
       setIsLoadingAuth(false);
     }
   };
 
   const logout = () => {
-    // Hard reset to prevent white screen crash
     localStorage.clear();
+    // Force hard reload to prevent React state crashes
     window.location.href = '/'; 
   };
 
   const navigateToLogin = () => {
-    // Use full URL to ensure mobile browsers return to the right place
+    // Use origin to ensure mobile returns to the correct domain
     base44.auth.redirectToLogin(window.location.origin);
   };
 
   return (
     <AuthContext.Provider value={{ 
       user, 
-      isAuthenticated, 
       isLoadingAuth, 
       logout,
       navigateToLogin,
