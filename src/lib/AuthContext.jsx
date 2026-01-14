@@ -12,8 +12,8 @@ export const AuthProvider = ({ children }) => {
   const [authError, setAuthError] = useState(null);
 
   useEffect(() => {
-    // FIX: Always check auth directly. Do not rely on appParams.token 
-    // because mobile browsers often store the token in a cookie instead.
+    // FIX: Always check the server directly. 
+    // Ignore appParams.token because mobile browsers hide the token in cookies.
     checkUserAuth();
   }, []);
 
@@ -39,14 +39,14 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    // FIX: Hard Reload. This prevents the "White Screen" crash.
+    // FIX: Hard Kill. Prevents white screen crash.
     localStorage.clear();
     window.location.href = '/'; 
   };
 
   const navigateToLogin = () => {
-    // FIX: Use full URL for mobile redirection safety
-    base44.auth.redirectToLogin(window.location.href);
+    // FIX: Use absolute URL for mobile safety
+    base44.auth.redirectToLogin(window.location.origin);
   };
 
   return (
