@@ -31,7 +31,7 @@ export default function ProfileSetup() {
         setLoading(true);
         try {
             // Create account
-            await base44.auth.signUp(formData.email, formData.password);
+            await base44.auth.signUp({ email: formData.email, password: formData.password });
             
             // Update profile
             await base44.auth.updateMe({
