@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
 
 const AuthContext = createContext();
 
@@ -15,41 +14,39 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [isLoadingAuth, setIsLoadingAuth] = useState(true);
 
-    const checkUserAuth = async () => {
-        try {
-            const userData = await base44.auth.me();
-            setUser(userData);
-        } catch (error) {
-            setUser(null);
-        } finally {
-            setIsLoadingAuth(false);
-        }
-    };
-
     useEffect(() => {
-        // Manually parse and save token from URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const accessToken = urlParams.get('access_token');
-        
-        if (accessToken) {
-            // Save token immediately to localStorage
-            localStorage.setItem('base44_access_token', accessToken);
-            
-            // Clean URL to remove token
-            window.history.replaceState({}, document.title, window.location.pathname);
+        // Load user from localStorage on mount
+        const savedUser = localStorage.getItem('local_user');
+        if (savedUser) {
+            try {
+                setUser(JSON.parse(savedUser));
+            } catch (e) {
+                console.error('Failed to parse saved user:', e);
+            }
         }
-        
-        // Now check auth after token is saved
-        checkUserAuth();
+        setIsLoadingAuth(false);
     }, []);
 
+    const login = (userData) => {
+        setUser(userData);
+        localStorage.setItem('local_user', JSON.stringify(userData));
+    };
+
     const logout = () => {
-        localStorage.clear();
+        setUser(null);
+        localStorage.removeItem('local_user');
         window.location.href = '/';
     };
 
+    const refreshUser = () => {
+        const savedUser = localStorage.getItem('local_user');
+        if (savedUser) {
+            setUser(JSON.parse(savedUser));
+        }
+    };
+
     return (
-        <AuthContext.Provider value={{ user, isLoadingAuth, logout, refreshUser: checkUserAuth }}>
+        <AuthContext.Provider value={{ user, login, logout, isLoadingAuth, refreshUser }}>
             {children}
         </AuthContext.Provider>
     );
