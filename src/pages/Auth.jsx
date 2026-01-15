@@ -13,7 +13,8 @@ export default function Auth() {
     const [loading, setLoading] = useState(false);
 
     const handleSubmit = async (e) => {
-        e.preventDefault();
+        if (e) e.preventDefault();
+        
         if (!email || !password) {
             toast.error('Please enter email and password');
             return;
@@ -42,7 +43,6 @@ export default function Auth() {
                     },
                     (error) => {
                         // If location fails, still redirect
-                        toast.error('Location access needed for full experience');
                         window.location.href = '/';
                     }
                 );
@@ -50,7 +50,8 @@ export default function Auth() {
                 window.location.href = '/';
             }
         } catch (error) {
-            toast.error(isSignUp ? 'Failed to create account' : 'Invalid credentials');
+            console.error('Auth error:', error);
+            toast.error(isSignUp ? 'Failed to create account. Please try again.' : 'Invalid email or password');
             setLoading(false);
         }
     };
@@ -112,6 +113,7 @@ export default function Auth() {
 
                         <Button
                             type="submit"
+                            onClick={(e) => { e.preventDefault(); handleSubmit(e); }}
                             disabled={loading}
                             className="w-full h-14 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-black font-semibold rounded-xl disabled:opacity-50"
                         >
