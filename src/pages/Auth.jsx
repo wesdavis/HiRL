@@ -9,7 +9,6 @@ import { toast } from 'sonner';
 export default function Auth() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [isSignUp, setIsSignUp] = useState(false);
     const [loading, setLoading] = useState(false);
 
     const handleSubmit = async (e) => {
@@ -22,13 +21,8 @@ export default function Auth() {
 
         setLoading(true);
         try {
-            if (isSignUp) {
-                await base44.auth.signUp(email, password);
-                toast.success('Account created! Logging you in...');
-            } else {
-                await base44.auth.signInWithPassword(email, password);
-                toast.success('Welcome back!');
-            }
+            await base44.auth.signInWithPassword(email, password);
+            toast.success('Welcome back!');
             
             // Get user location before redirecting
             if (navigator.geolocation) {
@@ -51,7 +45,7 @@ export default function Auth() {
             }
         } catch (error) {
             console.error('Auth error:', error);
-            toast.error(isSignUp ? 'Failed to create account. Please try again.' : 'Invalid email or password');
+            toast.error('Invalid email or password');
             setLoading(false);
         }
     };
@@ -68,10 +62,10 @@ export default function Auth() {
                         <Zap className="w-8 h-8 text-amber-400" />
                     </div>
                     <h1 className="text-3xl font-bold text-white mb-2">
-                        {isSignUp ? 'Create Account' : 'Welcome Back'}
+                        Welcome Back
                     </h1>
                     <p className="text-slate-400">
-                        {isSignUp ? 'Sign up to get started' : 'Sign in to continue'}
+                        Sign in to continue
                     </p>
                 </div>
 
@@ -117,16 +111,16 @@ export default function Auth() {
                             disabled={loading}
                             className="w-full h-14 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-black font-semibold rounded-xl disabled:opacity-50"
                         >
-                            {loading ? (isSignUp ? 'Creating...' : 'Signing in...') : (isSignUp ? 'Create Account' : 'Sign In')}
+                            {loading ? 'Signing in...' : 'Sign In'}
                             {!loading && <ArrowRight className="w-5 h-5 ml-2" />}
                         </Button>
                     </form>
 
                     <button
-                        onClick={() => setIsSignUp(!isSignUp)}
+                        onClick={() => window.location.href = '/profile-setup'}
                         className="text-slate-400 text-sm text-center mt-6 w-full hover:text-white transition-colors"
                     >
-                        {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
+                        Don't have an account? Sign up
                     </button>
                 </div>
             </motion.div>
