@@ -24,13 +24,15 @@ export default function Layout({ children }) {
 
     // LOGIC: 
     // 1. Hide on DevTools (always)
-    // 2. Hide on Root ('/') IF we are NOT logged in (that's the Landing Page view)
-    // 3. Otherwise (like on /location/123), SHOW it if we are logged in.
+    // 2. Hide on Auth page (always)
+    // 3. Hide on Root ('/') IF we are NOT logged in (that's the Landing Page view)
+    // 4. Otherwise (like on /location/123), SHOW it if we are logged in.
     const isDevTools = location.pathname === '/dev-tools';
+    const isAuth = location.pathname === '/auth';
     const isRoot = location.pathname === '/';
     
-    // Show Nav if: Not DevTools AND (Not Root OR User is Logged In)
-    const showNav = !isDevTools && (!isRoot || isLoggedIn);
+    // Show Nav if: Not DevTools AND Not Auth AND (Not Root OR User is Logged In)
+    const showNav = !isDevTools && !isAuth && (!isRoot || isLoggedIn);
 
     const navItems = [
         { name: 'Home', icon: Home, page: 'Home' },
