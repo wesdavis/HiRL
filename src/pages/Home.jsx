@@ -111,10 +111,18 @@ export default function Home() {
     // =========================================================
 
     // 1. Loading -> Spinner
-    if (isLoadingAuth) return <div className="min-h-screen bg-slate-950 flex items-center justify-center"><Loader2 className="w-8 h-8 text-amber-500 animate-spin" /></div>;
+    if (isLoadingAuth) {
+        return (
+            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+                <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
+            </div>
+        );
+    }
 
     // 2. Not Logged In -> Landing Page
-    if (!user) return <Landing />;
+    if (!user) {
+        return <Landing />;
+    }
 
     // 3. Incomplete Profile -> Profile Setup
     if (!user.gender || !user.full_name) {

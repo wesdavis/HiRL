@@ -6,8 +6,7 @@ import { createPageUrl } from '../components/utils';
 
 export default function Landing() {
     const handleGetStarted = () => {
-        // Navigate to auth page
-        window.location.href = createPageUrl('Auth');
+        base44.auth.redirectToLogin(window.location.origin);
     };
 
     return (
