@@ -86,9 +86,15 @@ export default function Profile() {
         }
     };
 
-    const handleLogout = () => {
-        localStorage.clear();
-        window.location.href = '/';
+    const handleLogout = async () => {
+        try {
+            await base44.auth.logout();
+            localStorage.clear();
+            window.location.href = '/';
+        } catch (error) {
+            localStorage.clear();
+            window.location.href = '/';
+        }
     };
 
     if (loading) return <div className='min-h-screen bg-slate-950 flex items-center justify-center text-white'>Loading...</div>;
