@@ -5,7 +5,7 @@ import { Zap, MapPin, Shield, Sparkles, Heart, Users } from 'lucide-react';
 
 export default function Landing() {
     const handleGetStarted = () => {
-        window.location.href = '/login';
+        window.location.href = '/auth';
     };
 
     return (
