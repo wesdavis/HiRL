@@ -2,7 +2,7 @@ import React from 'react';
 import { Button } from "@/components/ui/button";
 import { motion } from 'framer-motion';
 import { Zap, MapPin, Shield, Sparkles, Heart, Users } from 'lucide-react';
-import { createPageUrl } from '../components/utils';
+import { base44 } from '@/api/base44Client';
 
 export default function Landing() {
     const handleGetStarted = () => {

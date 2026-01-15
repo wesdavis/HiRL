@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MapPin, Zap, ArrowLeft, RefreshCw, Loader2, Search } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { toast } from 'sonner';
-import { useAuth } from '@/lib/AuthContext'; // IMPORT CONTEXT
+import { useAuth } from '@/components/AuthContext'; // IMPORT CONTEXT
 
 // Imports
 import Landing from './Landing'; 
