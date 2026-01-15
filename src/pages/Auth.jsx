@@ -2,28 +2,35 @@ import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { motion } from 'framer-motion';
-import { Zap, Mail, ArrowRight } from 'lucide-react';
+import { Zap, Mail, ArrowRight, Lock } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 
 export default function Auth() {
     const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [isSignUp, setIsSignUp] = useState(false);
     const [loading, setLoading] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!email) {
-            toast.error('Please enter your email');
+        if (!email || !password) {
+            toast.error('Please enter email and password');
             return;
         }
 
         setLoading(true);
         try {
-            // Use Base44's authentication
-            await base44.auth.signInWithEmail(email);
-            toast.success('Check your email for the login link!');
+            if (isSignUp) {
+                await base44.auth.signUp(email, password);
+                toast.success('Account created! Logging you in...');
+            } else {
+                await base44.auth.signInWithPassword(email, password);
+                toast.success('Welcome back!');
+            }
+            window.location.href = '/';
         } catch (error) {
-            toast.error('Failed to send login link');
+            toast.error(isSignUp ? 'Failed to create account' : 'Invalid credentials');
             setLoading(false);
         }
     };
@@ -39,8 +46,12 @@ export default function Auth() {
                     <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-amber-500/20 mb-4">
                         <Zap className="w-8 h-8 text-amber-400" />
                     </div>
-                    <h1 className="text-3xl font-bold text-white mb-2">Welcome Back</h1>
-                    <p className="text-slate-400">Enter your email to continue</p>
+                    <h1 className="text-3xl font-bold text-white mb-2">
+                        {isSignUp ? 'Create Account' : 'Welcome Back'}
+                    </h1>
+                    <p className="text-slate-400">
+                        {isSignUp ? 'Sign up to get started' : 'Sign in to continue'}
+                    </p>
                 </div>
 
                 <div className="backdrop-blur-xl bg-white/5 rounded-3xl border border-white/10 p-8">
@@ -62,19 +73,39 @@ export default function Auth() {
                             </div>
                         </div>
 
+                        <div>
+                            <label className="text-slate-300 text-sm font-medium mb-2 block">
+                                Password
+                            </label>
+                            <div className="relative">
+                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                                <Input
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    placeholder="••••••••"
+                                    className="pl-12 bg-white/5 border-white/10 text-white h-14 rounded-xl"
+                                    disabled={loading}
+                                />
+                            </div>
+                        </div>
+
                         <Button
                             type="submit"
                             disabled={loading}
                             className="w-full h-14 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-black font-semibold rounded-xl"
                         >
-                            {loading ? 'Sending...' : 'Continue'}
+                            {loading ? (isSignUp ? 'Creating...' : 'Signing in...') : (isSignUp ? 'Create Account' : 'Sign In')}
                             <ArrowRight className="w-5 h-5 ml-2" />
                         </Button>
                     </form>
 
-                    <p className="text-slate-400 text-sm text-center mt-6">
-                        We'll send you a magic link to sign in
-                    </p>
+                    <button
+                        onClick={() => setIsSignUp(!isSignUp)}
+                        className="text-slate-400 text-sm text-center mt-6 w-full hover:text-white transition-colors"
+                    >
+                        {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
+                    </button>
                 </div>
             </motion.div>
         </div>
