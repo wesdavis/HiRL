@@ -21,7 +21,7 @@ export default function Auth() {
 
         setLoading(true);
         try {
-            await base44.auth.signInWithPassword(email, password);
+            await base44.auth.signInWithPassword({ email, password });
             toast.success('Welcome back!');
             
             // Get user location before redirecting
@@ -107,7 +107,6 @@ export default function Auth() {
 
                         <Button
                             type="submit"
-                            onClick={(e) => { e.preventDefault(); handleSubmit(e); }}
                             disabled={loading}
                             className="w-full h-14 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-black font-semibold rounded-xl disabled:opacity-50"
                         >
