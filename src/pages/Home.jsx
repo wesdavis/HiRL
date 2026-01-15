@@ -118,6 +118,14 @@ export default function Home() {
 
     const isFemale = user.gender === 'female';
 
+    // Filter locations within 30 miles
+    const nearbyLocations = userLocation 
+        ? locations.filter(loc => {
+            const distance = getDistanceToLocation(loc);
+            return distance !== null && distance <= DISPLAY_RADIUS_METERS;
+          })
+        : locations;
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950">
             <div className="max-w-lg mx-auto px-4 py-6 pb-24">
@@ -137,16 +145,15 @@ export default function Home() {
                 <AnimatePresence mode="wait">
                     {!selectedLocation ? (
                         <motion.div key="locations" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-                            {/* Empty State: Search */}
-                            {locations.length === 0 ? (
+                            {nearbyLocations.length === 0 ? (
                                 <div className="text-center py-12 backdrop-blur-xl bg-white/5 rounded-3xl border border-white/10 p-8">
                                     <MapPin className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-                                    <h3 className="text-xl font-bold text-white mb-2">No Locations Found</h3>
-                                    <p className="text-slate-400 mb-6">We couldn't find any active venues.</p>
-                                    <Button onClick={() => refetchLocations()} className="w-full h-12 bg-amber-500 text-black font-bold rounded-xl"><Search className="w-4 h-4 mr-2" />Search Again</Button>
+                                    <h3 className="text-xl font-bold text-white mb-2">No Nearby Locations</h3>
+                                    <p className="text-slate-400 mb-6">No venues found within 30 miles of your location.</p>
+                                    <Button onClick={() => refetchLocations()} className="w-full h-12 bg-amber-500 text-black font-bold rounded-xl"><Search className="w-4 h-4 mr-2" />Search for Nearest Location</Button>
                                 </div>
                             ) : (
-                                locations.map(loc => (
+                                nearbyLocations.map(loc => (
                                     <LocationCard key={loc.id} location={loc} activeCount={getCheckInsForLocation(loc.id).length} isCheckedIn={myActiveCheckIn?.location_id === loc.id} isNearby={isNearLocation(loc)} distance={getDistanceToLocation(loc)} onClick={() => setSelectedLocation(loc)} />
                                 ))
                             )}
