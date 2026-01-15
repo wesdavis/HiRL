@@ -3,6 +3,7 @@ import Home from './pages/Home';
 import Landing from './pages/Landing';
 import Profile from './pages/Profile';
 import ProfileSetup from './pages/ProfileSetup';
+import Auth from './pages/Auth';
 import __Layout from './Layout.jsx';
 
 
@@ -12,6 +13,7 @@ export const PAGES = {
     "Landing": Landing,
     "Profile": Profile,
     "ProfileSetup": ProfileSetup,
+    "Auth": Auth,
 }
 
 export const pagesConfig = {
