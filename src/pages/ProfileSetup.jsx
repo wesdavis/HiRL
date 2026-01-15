@@ -12,6 +12,8 @@ import { motion } from 'framer-motion';
 export default function ProfileSetup() {
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
+        email: '',
+        password: '',
         full_name: '',
         gender: '',
         seeking: '',
@@ -21,18 +23,44 @@ export default function ProfileSetup() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         
-        if (!formData.full_name || !formData.gender || !formData.seeking) {
+        if (!formData.email || !formData.password || !formData.full_name || !formData.gender || !formData.seeking) {
             toast.error('Please fill in all required fields');
             return;
         }
 
         setLoading(true);
         try {
-            await base44.auth.updateMe(formData);
-            toast.success('Profile created!');
-            window.location.href = '/';
+            // Create account
+            await base44.auth.signUp(formData.email, formData.password);
+            
+            // Update profile
+            await base44.auth.updateMe({
+                full_name: formData.full_name,
+                gender: formData.gender,
+                seeking: formData.seeking,
+                bio: formData.bio
+            });
+            
+            toast.success('Account created!');
+            
+            // Get location and redirect
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const location = {
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude
+                        };
+                        localStorage.setItem('userLocation', JSON.stringify(location));
+                        window.location.href = '/';
+                    },
+                    () => window.location.href = '/'
+                );
+            } else {
+                window.location.href = '/';
+            }
         } catch (error) {
-            toast.error('Failed to save profile');
+            toast.error('Failed to create account');
             setLoading(false);
         }
     };
@@ -48,11 +76,35 @@ export default function ProfileSetup() {
                     <div className="w-16 h-16 rounded-full bg-amber-500/20 flex items-center justify-center mx-auto mb-4">
                         <Sparkles className="w-8 h-8 text-amber-400" />
                     </div>
-                    <h1 className="text-3xl font-bold text-white mb-2">Complete Your Profile</h1>
-                    <p className="text-slate-400">Let's get you set up to start connecting</p>
+                    <h1 className="text-3xl font-bold text-white mb-2">Create Your Account</h1>
+                    <p className="text-slate-400">Sign up to start connecting</p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-5">
+                    <div>
+                        <Label className="text-slate-300 mb-2 block">Email Address *</Label>
+                        <Input
+                            type="email"
+                            value={formData.email}
+                            onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                            placeholder="you@example.com"
+                            className="bg-white/5 border-white/10 text-white h-12 rounded-xl"
+                            required
+                        />
+                    </div>
+
+                    <div>
+                        <Label className="text-slate-300 mb-2 block">Password *</Label>
+                        <Input
+                            type="password"
+                            value={formData.password}
+                            onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                            placeholder="Create a password"
+                            className="bg-white/5 border-white/10 text-white h-12 rounded-xl"
+                            required
+                        />
+                    </div>
+
                     <div>
                         <Label className="text-slate-300 mb-2 block">Full Name *</Label>
                         <Input
@@ -116,8 +168,16 @@ export default function ProfileSetup() {
                         disabled={loading}
                         className="w-full h-12 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-black font-semibold rounded-xl"
                     >
-                        {loading ? 'Saving...' : 'Complete Profile'}
+                        {loading ? 'Creating Account...' : 'Create Account'}
                     </Button>
+
+                    <button
+                        type="button"
+                        onClick={() => window.location.href = '/auth'}
+                        className="text-slate-400 text-sm text-center w-full hover:text-white transition-colors"
+                    >
+                        Already have an account? Sign in
+                    </button>
                 </form>
             </motion.div>
         </div>
