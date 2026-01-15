@@ -28,7 +28,27 @@ export default function Auth() {
                 await base44.auth.signInWithPassword(email, password);
                 toast.success('Welcome back!');
             }
-            window.location.href = '/';
+            
+            // Get user location before redirecting
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const location = {
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude
+                        };
+                        localStorage.setItem('userLocation', JSON.stringify(location));
+                        window.location.href = '/';
+                    },
+                    (error) => {
+                        // If location fails, still redirect
+                        toast.error('Location access needed for full experience');
+                        window.location.href = '/';
+                    }
+                );
+            } else {
+                window.location.href = '/';
+            }
         } catch (error) {
             toast.error(isSignUp ? 'Failed to create account' : 'Invalid credentials');
             setLoading(false);
