@@ -17,6 +17,7 @@ export default function Profile() {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [uploading, setUploading] = useState(false);
     const [formData, setFormData] = useState({});
 
     useEffect(() => {
