@@ -16,6 +16,7 @@ import PingNotifications from '@/components/notifications/PingNotifications';
 import MatchNotifications from '@/components/notifications/MatchNotifications';
 
 const CHECKIN_RADIUS_METERS = 5000;
+const DISPLAY_RADIUS_METERS = 48280; // 30 miles
 
 // Helper to calc distance
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
