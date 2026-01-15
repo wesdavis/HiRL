@@ -2,12 +2,11 @@ import React from 'react';
 import { Button } from "@/components/ui/button";
 import { motion } from 'framer-motion';
 import { Zap, MapPin, Shield, Sparkles, Heart, Users } from 'lucide-react';
-import { createPageUrl } from '../components/utils';
 
 export default function Landing() {
     const handleGetStarted = () => {
-        // Navigate to login page
-        window.location.href = createPageUrl('Login');
+        // Navigate to built-in login page
+        window.location.href = '/login';
     };
 
     return (
