@@ -113,10 +113,10 @@ export default function Auth() {
                         <Button
                             type="submit"
                             disabled={loading}
-                            className="w-full h-14 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-black font-semibold rounded-xl"
+                            className="w-full h-14 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-black font-semibold rounded-xl disabled:opacity-50"
                         >
                             {loading ? (isSignUp ? 'Creating...' : 'Signing in...') : (isSignUp ? 'Create Account' : 'Sign In')}
-                            <ArrowRight className="w-5 h-5 ml-2" />
+                            {!loading && <ArrowRight className="w-5 h-5 ml-2" />}
                         </Button>
                     </form>
 
