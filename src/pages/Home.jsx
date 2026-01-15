@@ -41,20 +41,26 @@ export default function Home() {
     const [selectedLocation, setSelectedLocation] = useState(null);
     const [checkingIn, setCheckingIn] = useState(false);
     const [checkingOut, setCheckingOut] = useState(false);
-    const [userLocation, setUserLocation] = useState(null);
-    const [loadingGeo, setLoadingGeo] = useState(true);
+    const [userLocation, setUserLocation] = useState(() => {
+        const saved = localStorage.getItem('userLocation');
+        return saved ? JSON.parse(saved) : null;
+    });
+    const [loadingGeo, setLoadingGeo] = useState(!localStorage.getItem('userLocation'));
     const checkInIdRef = useRef(null);
 
     // 3. GEOLOCATION
     useEffect(() => {
         if (!navigator.geolocation) { setLoadingGeo(false); return; }
-        navigator.geolocation.watchPosition(
+        const watchId = navigator.geolocation.watchPosition(
             (pos) => {
-                setUserLocation({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
+                const newLocation = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
+                setUserLocation(newLocation);
+                localStorage.setItem('userLocation', JSON.stringify(newLocation));
                 setLoadingGeo(false);
             },
             (err) => setLoadingGeo(false)
         );
+        return () => navigator.geolocation.clearWatch(watchId);
     }, []);
 
     // 4. DATA FETCHING (Only if user exists)
