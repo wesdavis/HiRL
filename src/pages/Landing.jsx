@@ -2,13 +2,12 @@ import React from 'react';
 import { Button } from "@/components/ui/button";
 import { motion } from 'framer-motion';
 import { Zap, MapPin, Shield, Sparkles, Heart, Users } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '../components/utils';
 
 export default function Landing() {
     const handleGetStarted = () => {
-        // Redirect to login and come back to home page
-        base44.auth.redirectToLogin(createPageUrl('Home'));
+        // Navigate to login page
+        window.location.href = createPageUrl('Login');
     };
 
     return (
