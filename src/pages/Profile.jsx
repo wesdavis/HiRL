@@ -12,8 +12,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from 'sonner';
 import moment from 'moment';
 import { createPageUrl } from '@/components/utils';
+import { useAuth } from '@/components/AuthContext';
 
 export default function Profile() {
+    const { logout } = useAuth();
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -86,15 +88,8 @@ export default function Profile() {
         }
     };
 
-    const handleLogout = async () => {
-        try {
-            await base44.auth.logout();
-            localStorage.clear();
-            window.location.href = '/';
-        } catch (error) {
-            localStorage.clear();
-            window.location.href = '/';
-        }
+    const handleLogout = () => {
+        logout();
     };
 
     if (loading) return <div className='min-h-screen bg-slate-950 flex items-center justify-center text-white'>Loading...</div>;
