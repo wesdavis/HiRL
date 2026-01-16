@@ -1,50 +1,40 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
 
-const AuthContext = createContext();
+const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
 
   useEffect(() => {
-    checkUserAuth();
+    // 1. Check Local Storage on load
+    const storedUser = localStorage.getItem('local_user');
+    if (storedUser) {
+        try {
+            setUser(JSON.parse(storedUser));
+        } catch (e) {
+            console.error("Failed to parse user", e);
+        }
+    }
+    setIsLoadingAuth(false);
   }, []);
 
-  const checkUserAuth = async () => {
-    try {
-      // If there is a 'code' in the URL (returning from login), ensure we stay loading
-      // until the SDK processes it.
-      setIsLoadingAuth(true);
-      
-      const currentUser = await base44.auth.me();
-      setUser(currentUser);
-    } catch (error) {
-      setUser(null);
-    } finally {
-      setIsLoadingAuth(false);
-    }
+  // 2. Mock Login Function (Saves to Memory)
+  const login = (userData) => {
+    console.log("Mock Login:", userData);
+    setUser(userData);
+    localStorage.setItem('local_user', JSON.stringify(userData));
   };
 
+  // 3. Mock Logout Function (Clears Memory)
   const logout = () => {
-    localStorage.clear();
-    // Force hard reload to prevent React state crashes
+    setUser(null);
+    localStorage.removeItem('local_user');
     window.location.href = '/'; 
   };
 
-  const navigateToLogin = () => {
-    // Use origin to ensure mobile returns to the correct domain
-    base44.auth.redirectToLogin(window.location.origin);
-  };
-
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      isLoadingAuth, 
-      logout,
-      navigateToLogin,
-      checkUserAuth
-    }}>
+    <AuthContext.Provider value={{ user, isLoadingAuth, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
