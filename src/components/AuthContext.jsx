@@ -22,6 +22,7 @@ export const AuthProvider = ({ children }) => {
                 setUser(JSON.parse(savedUser));
             } catch (e) {
                 console.error('Failed to parse saved user:', e);
+                localStorage.removeItem('local_user');
             }
         }
         setIsLoadingAuth(false);
@@ -41,7 +42,11 @@ export const AuthProvider = ({ children }) => {
     const refreshUser = () => {
         const savedUser = localStorage.getItem('local_user');
         if (savedUser) {
-            setUser(JSON.parse(savedUser));
+            try {
+                setUser(JSON.parse(savedUser));
+            } catch (e) {
+                console.error('Failed to refresh user:', e);
+            }
         }
     };
 

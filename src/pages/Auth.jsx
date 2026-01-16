@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { motion } from 'framer-motion';
 import { Zap, Mail, ArrowRight, Lock } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/AuthContext';
 
@@ -25,11 +24,7 @@ export default function Auth() {
         
         // Check if user exists in localStorage
         const storedUsers = JSON.parse(localStorage.getItem('registered_users') || '[]');
-        console.log('Stored users:', storedUsers);
-        console.log('Attempting login with:', email);
-        
         const foundUser = storedUsers.find(u => u.email === email && u.password === password);
-        console.log('Found user:', foundUser);
         
         if (foundUser) {
             // Remove password before storing in session
@@ -37,22 +32,10 @@ export default function Auth() {
             login(userWithoutPassword);
             toast.success('Welcome back!');
             
-            // Get user location before redirecting
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        const location = {
-                            latitude: position.coords.latitude,
-                            longitude: position.coords.longitude
-                        };
-                        localStorage.setItem('userLocation', JSON.stringify(location));
-                        window.location.href = '/';
-                    },
-                    () => window.location.href = '/'
-                );
-            } else {
+            // Small delay before redirect
+            setTimeout(() => {
                 window.location.href = '/';
-            }
+            }, 500);
         } else {
             toast.error('Account not found. Please sign up first.');
             setLoading(false);
