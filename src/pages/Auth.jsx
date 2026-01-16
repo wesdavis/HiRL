@@ -14,7 +14,7 @@ export default function Auth() {
     const [loading, setLoading] = useState(false);
 
     const handleSubmit = async (e) => {
-        if (e) e.preventDefault();
+        e.preventDefault();
         
         if (!email || !password) {
             toast.error('Please enter email and password');
@@ -25,7 +25,11 @@ export default function Auth() {
         
         // Check if user exists in localStorage
         const storedUsers = JSON.parse(localStorage.getItem('registered_users') || '[]');
+        console.log('Stored users:', storedUsers);
+        console.log('Attempting login with:', email);
+        
         const foundUser = storedUsers.find(u => u.email === email && u.password === password);
+        console.log('Found user:', foundUser);
         
         if (foundUser) {
             // Remove password before storing in session
@@ -50,7 +54,7 @@ export default function Auth() {
                 window.location.href = '/';
             }
         } else {
-            toast.error('Invalid email or password');
+            toast.error('Account not found. Please sign up first.');
             setLoading(false);
         }
     };
