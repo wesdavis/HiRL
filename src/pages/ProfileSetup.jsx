@@ -8,8 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { User, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
+import { useAuth } from '@/components/AuthContext';
 
 export default function ProfileSetup() {
+    const { login } = useAuth();
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         email: '',
@@ -29,39 +31,53 @@ export default function ProfileSetup() {
         }
 
         setLoading(true);
-        try {
-            // Create account
-            await base44.auth.signUp({ email: formData.email, password: formData.password });
-            
-            // Update profile
-            await base44.auth.updateMe({
-                full_name: formData.full_name,
-                gender: formData.gender,
-                seeking: formData.seeking,
-                bio: formData.bio
-            });
-            
-            toast.success('Account created!');
-            
-            // Get location and redirect
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        const location = {
-                            latitude: position.coords.latitude,
-                            longitude: position.coords.longitude
-                        };
-                        localStorage.setItem('userLocation', JSON.stringify(location));
-                        window.location.href = '/';
-                    },
-                    () => window.location.href = '/'
-                );
-            } else {
-                window.location.href = '/';
-            }
-        } catch (error) {
-            toast.error('Failed to create account');
+        
+        // Store user in localStorage
+        const storedUsers = JSON.parse(localStorage.getItem('registered_users') || '[]');
+        
+        // Check if user already exists
+        if (storedUsers.some(u => u.email === formData.email)) {
+            toast.error('Account with this email already exists');
             setLoading(false);
+            return;
+        }
+        
+        // Add new user
+        const newUser = {
+            id: Date.now().toString(),
+            email: formData.email,
+            password: formData.password,
+            full_name: formData.full_name,
+            gender: formData.gender,
+            seeking: formData.seeking,
+            bio: formData.bio,
+            created_date: new Date().toISOString()
+        };
+        
+        storedUsers.push(newUser);
+        localStorage.setItem('registered_users', JSON.stringify(storedUsers));
+        
+        // Log in the user (without password in session)
+        const { password: _, ...userWithoutPassword } = newUser;
+        login(userWithoutPassword);
+        
+        toast.success('Account created!');
+        
+        // Get location and redirect
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const location = {
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude
+                    };
+                    localStorage.setItem('userLocation', JSON.stringify(location));
+                    window.location.href = '/';
+                },
+                () => window.location.href = '/'
+            );
+        } else {
+            window.location.href = '/';
         }
     };
 

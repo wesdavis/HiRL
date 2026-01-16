@@ -5,8 +5,10 @@ import { motion } from 'framer-motion';
 import { Zap, Mail, ArrowRight, Lock } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
+import { useAuth } from '@/components/AuthContext';
 
 export default function Auth() {
+    const { login } = useAuth();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
@@ -20,8 +22,15 @@ export default function Auth() {
         }
 
         setLoading(true);
-        try {
-            await base44.auth.signInWithPassword({ email, password });
+        
+        // Check if user exists in localStorage
+        const storedUsers = JSON.parse(localStorage.getItem('registered_users') || '[]');
+        const foundUser = storedUsers.find(u => u.email === email && u.password === password);
+        
+        if (foundUser) {
+            // Remove password before storing in session
+            const { password: _, ...userWithoutPassword } = foundUser;
+            login(userWithoutPassword);
             toast.success('Welcome back!');
             
             // Get user location before redirecting
@@ -35,16 +44,12 @@ export default function Auth() {
                         localStorage.setItem('userLocation', JSON.stringify(location));
                         window.location.href = '/';
                     },
-                    (error) => {
-                        // If location fails, still redirect
-                        window.location.href = '/';
-                    }
+                    () => window.location.href = '/'
                 );
             } else {
                 window.location.href = '/';
             }
-        } catch (error) {
-            console.error('Auth error:', error);
+        } else {
             toast.error('Invalid email or password');
             setLoading(false);
         }
