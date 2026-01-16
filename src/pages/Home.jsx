@@ -8,9 +8,8 @@ import { useAuth } from '@/components/AuthContext';
 import Landing from './Landing'; 
 import LocationCard from '@/components/location/LocationCard';
 import UserGrid from '@/components/location/UserGrid';
-import MatchNotifications from '@/components/notifications/MatchNotifications';
 
-// 1. MOCK DATA (Replaces API Calls)
+// 1. MOCK DATA (No API Calls)
 const MOCK_LOCATIONS = [
     { id: 1, name: "The Velvet Room", address: "123 Main St", latitude: 40.7128, longitude: -74.0060, image_url: "https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=800" },
     { id: 2, name: "Neon Nights", address: "456 Downtown Blvd", latitude: 40.7138, longitude: -74.0070, image_url: "https://images.unsplash.com/photo-1566737236500-c8ac43014a67?w=800" },
@@ -28,9 +27,9 @@ export default function Home() {
     const [checkingIn, setCheckingIn] = useState(false);
     const [loadingGeo, setLoadingGeo] = useState(true);
     
-    // Fake loading delay for GPS
+    // Fake GPS loader
     useEffect(() => {
-        const timer = setTimeout(() => setLoadingGeo(false), 1500);
+        const timer = setTimeout(() => setLoadingGeo(false), 1000);
         return () => clearTimeout(timer);
     }, []);
 
@@ -39,14 +38,14 @@ export default function Home() {
         setTimeout(() => {
             setCheckingIn(false);
             toast.success(`Checked in at ${loc.name}`);
-        }, 1000);
+        }, 800);
     };
 
-    // BOUNCER LOGIC
+    // BOUNCER: Check Context
     if (isLoadingAuth) return <div className="min-h-screen bg-slate-950 flex items-center justify-center"><Loader2 className="w-8 h-8 text-amber-500 animate-spin" /></div>;
     if (!user) return <Landing />;
     
-    // Redirect to profile setup if data is missing (handles partial mocks)
+    // Safety check for profile data
     if (!user.gender || !user.full_name) {
         window.location.href = '/profile-setup';
         return null;
@@ -64,7 +63,7 @@ export default function Home() {
                         <div>
                             <h1 className="text-2xl font-bold text-white">Discover</h1>
                             <div className="flex items-center gap-2">
-                                <p className="text-slate-400 text-sm">Local Mode</p>
+                                <p className="text-slate-400 text-sm">Local Mock Mode</p>
                                 {loadingGeo && <span className="text-amber-500 text-xs animate-pulse">Locating...</span>}
                             </div>
                         </div>
@@ -79,7 +78,7 @@ export default function Home() {
                                 <LocationCard 
                                     key={loc.id} 
                                     location={loc} 
-                                    activeCount={Math.floor(Math.random() * 15)} 
+                                    activeCount={Math.floor(Math.random() * 20)} 
                                     isNearby={true} 
                                     distance={500} 
                                     onClick={() => setSelectedLocation(loc)} 
