@@ -10,10 +10,9 @@ function LayoutContent({ children }) {
 
     const isDevTools = location.pathname === '/dev-tools';
     const isAuth = location.pathname === '/auth';
-    const isRoot = location.pathname === '/';
     
-    // Show Nav if logged in AND not on special pages (auth/devtools) AND not on root
-    const showNav = user && !isDevTools && !isAuth && !isRoot;
+    // Show Nav if logged in AND not on special pages (auth/devtools)
+    const showNav = user && !isDevTools && !isAuth;
 
     const navItems = [
         { name: 'Home', icon: Home, page: 'Home' },
