@@ -1,6 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
-import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,95 +8,57 @@ import { Upload, Save, User, Zap, MapPin, LogOut, Eye, EyeOff } from 'lucide-rea
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from 'sonner';
-import moment from 'moment';
-import { createPageUrl } from '@/components/utils';
 import { useAuth } from '@/components/AuthContext';
 
 export default function Profile() {
-    const { logout } = useAuth();
-    const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const { user, logout } = useAuth();
+    const [formData, setFormData] = useState({});
     const [saving, setSaving] = useState(false);
     const [uploading, setUploading] = useState(false);
-    const [formData, setFormData] = useState({});
 
     useEffect(() => {
-        const fetchUser = async () => {
-            try {
-                const userData = await base44.auth.me();
-                setUser(userData);
-                if (userData) {
-                    setFormData({
-                        bio: userData.bio || '',
-                        seeking: userData.seeking || 'everyone',
-                        gender: userData.gender || '',
-                        full_name: userData.full_name || '',
-                        private_mode: userData.private_mode || false
-                    });
-                }
-            } catch (e) {
-                console.error(e);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchUser();
-    }, []);
+        if (user) {
+            setFormData({
+                bio: user.bio || '',
+                seeking: user.seeking || 'everyone',
+                gender: user.gender || '',
+                full_name: user.full_name || '',
+                photo_url: user.photo_url || '',
+                age: user.age || '',
+                private_mode: user.private_mode || false
+            });
+        }
+    }, [user]);
 
-    // 3. Queries (Safe to run even if user is null because of enabled: !!user)
-    const { data: myCheckIns = [] } = useQuery({
-        queryKey: ['my-checkins', user?.email],
-        queryFn: () => base44.entities.CheckIn.filter({ user_email: user?.email }),
-        enabled: !!user?.email
-    });
-
-    const { data: receivedPings = [] } = useQuery({
-        queryKey: ['received-pings', user?.email],
-        queryFn: () => base44.entities.Ping.filter({ to_user_email: user?.email }),
-        enabled: !!user?.email
-    });
-
-    // 4. Action Handlers
     const handlePhotoUpload = async (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
         
         setUploading(true);
-        try {
-            const { file_url } = await base44.integrations.Core.UploadFile({ file });
-            setFormData(prev => ({ ...prev, photo_url: file_url }));
-        } catch (error) {
-            toast.error("Upload failed");
-        } finally {
+        setTimeout(() => {
+            const mockUrl = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=800';
+            setFormData(prev => ({ ...prev, photo_url: mockUrl }));
+            toast.success('Photo uploaded (mock)');
             setUploading(false);
-        }
+        }, 500);
     };
 
     const handleSave = async () => {
         setSaving(true);
-        try {
-            await base44.auth.updateMe(formData);
-            const updatedUser = await base44.auth.me();
-            setUser(updatedUser);
+        setTimeout(() => {
+            const updatedUser = { ...user, ...formData };
+            localStorage.setItem('local_user', JSON.stringify(updatedUser));
             toast.success('Profile updated!');
-        } catch (error) {
-            toast.error("Save failed");
-        } finally {
             setSaving(false);
-        }
+        }, 500);
     };
 
     const handleLogout = () => {
         logout();
     };
 
-    if (loading) return <div className='min-h-screen bg-slate-950 flex items-center justify-center text-white'>Loading...</div>;
-    if (!user) return <div className='min-h-screen bg-slate-950' />; // Safety empty div if no user
+    if (!user) return <div className='min-h-screen bg-slate-950' />;
 
-    const totalCheckIns = myCheckIns.length;
-    const totalPings = receivedPings.length;
-
-    // 6. MAIN RENDER
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950">
             <div className="max-w-lg mx-auto px-4 py-6 pb-24">
@@ -145,12 +105,12 @@ export default function Profile() {
                     <div className="grid grid-cols-2 gap-4 mb-6">
                         <div className="bg-white/5 rounded-xl p-4 text-center">
                             <MapPin className="w-6 h-6 text-amber-400 mx-auto mb-2" />
-                            <p className="text-2xl font-bold text-white">{totalCheckIns}</p>
+                            <p className="text-2xl font-bold text-white">0</p>
                             <p className="text-slate-400 text-sm">Check-ins</p>
                         </div>
                         <div className="bg-white/5 rounded-xl p-4 text-center">
                             <Zap className="w-6 h-6 text-amber-400 mx-auto mb-2" />
-                            <p className="text-2xl font-bold text-white">{totalPings}</p>
+                            <p className="text-2xl font-bold text-white">0</p>
                             <p className="text-slate-400 text-sm">Pings Received</p>
                         </div>
                     </div>
@@ -231,34 +191,6 @@ export default function Profile() {
                         </Button>
                     </div>
                 </motion.div>
-
-                {/* Recent Activity */}
-                {myCheckIns.length > 0 && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.1 }}
-                        className="backdrop-blur-xl bg-white/5 rounded-3xl border border-white/10 p-6 mb-6"
-                    >
-                        <h3 className="text-lg font-semibold text-white mb-4">Recent Check-ins</h3>
-                        <div className="space-y-3">
-                            {myCheckIns.slice(0, 5).map((checkIn) => (
-                                <div key={checkIn.id} className="flex items-center gap-3 py-2 border-b border-white/5 last:border-0">
-                                    <MapPin className="w-4 h-4 text-amber-400" />
-                                    <div className="flex-1">
-                                        <p className="text-white text-sm">{checkIn.location_name}</p>
-                                        <p className="text-slate-500 text-xs">{moment(checkIn.created_date).fromNow()}</p>
-                                    </div>
-                                    {checkIn.is_active && (
-                                        <span className="px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 text-xs">
-                                            Active
-                                        </span>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                    </motion.div>
-                )}
 
                 {/* Logout */}
                 <Button
