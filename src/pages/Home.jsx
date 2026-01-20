@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MapPin, Zap, ArrowLeft, RefreshCw, Loader2, Search, Navigation, Star, Send } from 'lucide-react';
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from 'sonner';
 import { useAuth } from '@/components/AuthContext';
 
-import Landing from './Landing'; 
+ 
 import LocationCard from '@/components/location/LocationCard';
 import UserGrid from '@/components/location/UserGrid';
 
@@ -200,7 +201,10 @@ export default function Home() {
 
     // BOUNCER: Check Context
     if (isLoadingAuth) return <div className="min-h-screen bg-slate-950 flex items-center justify-center"><Loader2 className="w-8 h-8 text-amber-500 animate-spin" /></div>;
-    if (!user) return <Landing />;
+    if (!user) {
+        window.location.href = '/landing';
+        return null;
+    }
     
     // Safety check for profile data
     if (!user.gender || !user.full_name) {
