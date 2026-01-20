@@ -15,8 +15,8 @@ const MOCK_LOCATIONS = [
         id: 1, 
         name: "The Velvet Room", 
         address: "123 Main St", 
-        latitude: 40.7128, 
-        longitude: -74.0060, 
+        latitude: 39.7392,
+        longitude: -104.9903, 
         image_url: "https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=800",
         category: "lounge",
         summary: "Upscale cocktail lounge with velvet seating and live jazz on weekends. Perfect for intimate conversations and craft cocktails.",
@@ -32,8 +32,8 @@ const MOCK_LOCATIONS = [
         id: 2, 
         name: "Neon Nights", 
         address: "456 Downtown Blvd", 
-        latitude: 40.7138, 
-        longitude: -74.0070, 
+        latitude: 39.7402,
+        longitude: -104.9913, 
         image_url: "https://images.unsplash.com/photo-1566737236500-c8ac43014a67?w=800",
         category: "club",
         summary: "High-energy nightclub featuring top DJs and LED dance floors. Dress code enforced.",
@@ -49,8 +49,8 @@ const MOCK_LOCATIONS = [
         id: 3, 
         name: "Skyline Lounge", 
         address: "789 High Rise", 
-        latitude: 40.7148, 
-        longitude: -74.0080, 
+        latitude: 39.7412,
+        longitude: -104.9923, 
         image_url: "https://images.unsplash.com/photo-1570876050997-2fdefb00c004?w=800",
         category: "restaurant",
         summary: "Rooftop restaurant with panoramic city views. Modern American cuisine with seasonal menu.",
@@ -82,6 +82,32 @@ export default function Home() {
     const [checkingIn, setCheckingIn] = useState(false);
     const [loadingGeo, setLoadingGeo] = useState(true);
     
+    // Load existing active check-in on mount
+    useEffect(() => {
+        if (!user) return;
+        
+        const existingCheckIns = JSON.parse(localStorage.getItem('local_checkins') || '[]');
+        const activeCheckIn = existingCheckIns.find(
+            checkin => checkin.user_email === user.email && checkin.is_active
+        );
+
+        if (activeCheckIn) {
+            // Find the location from MOCK_LOCATIONS
+            const location = MOCK_LOCATIONS.find(loc => loc.id.toString() === activeCheckIn.location_id);
+            if (location) {
+                setCheckedInLocation(location);
+                const checkInDate = new Date(activeCheckIn.created_date).getTime();
+                setCheckInTime(checkInDate);
+                
+                // Check if already eligible for review
+                const minutesElapsed = (Date.now() - checkInDate) / (1000 * 60);
+                if (minutesElapsed >= 30) {
+                    setCanReview(true);
+                }
+            }
+        }
+    }, [user]);
+
     // Fake GPS loader
     useEffect(() => {
         const timer = setTimeout(() => setLoadingGeo(false), 1000);
@@ -106,6 +132,26 @@ export default function Home() {
     const handleCheckIn = async (loc) => {
         setCheckingIn(true);
         setTimeout(() => {
+            const checkInData = {
+                id: `checkin-${Date.now()}`,
+                user_email: user.email,
+                user_name: user.full_name,
+                user_photo: user.photo_url,
+                user_gender: user.gender,
+                user_bio: user.bio,
+                user_private_mode: user.private_mode || false,
+                location_id: loc.id.toString(),
+                location_name: loc.name,
+                is_active: true,
+                created_date: new Date().toISOString(),
+                checked_out_at: null
+            };
+
+            // Save to localStorage
+            const existingCheckIns = JSON.parse(localStorage.getItem('local_checkins') || '[]');
+            existingCheckIns.push(checkInData);
+            localStorage.setItem('local_checkins', JSON.stringify(existingCheckIns));
+
             setCheckingIn(false);
             setCheckedInLocation(loc);
             setCheckInTime(Date.now());
@@ -116,6 +162,22 @@ export default function Home() {
     };
 
     const handleCheckOut = () => {
+        // Update the check-in record in localStorage
+        const existingCheckIns = JSON.parse(localStorage.getItem('local_checkins') || '[]');
+        const updatedCheckIns = existingCheckIns.map(checkin => {
+            if (checkin.user_email === user.email && 
+                checkin.location_id === checkedInLocation.id.toString() && 
+                checkin.is_active) {
+                return {
+                    ...checkin,
+                    is_active: false,
+                    checked_out_at: new Date().toISOString()
+                };
+            }
+            return checkin;
+        });
+        localStorage.setItem('local_checkins', JSON.stringify(updatedCheckIns));
+
         toast.success(`Checked out from ${checkedInLocation.name}`);
         setCheckedInLocation(null);
         setCheckInTime(null);
