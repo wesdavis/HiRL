@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, Zap, ArrowLeft, RefreshCw, Loader2, Search, Navigation } from 'lucide-react';
+import { MapPin, Zap, ArrowLeft, RefreshCw, Loader2, Search, Navigation, Star, Send } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { toast } from 'sonner';
 import { useAuth } from '@/components/AuthContext';
@@ -74,6 +74,11 @@ export default function Home() {
     const { user, isLoadingAuth } = useAuth();
     const [selectedLocation, setSelectedLocation] = useState(null);
     const [checkedInLocation, setCheckedInLocation] = useState(null);
+    const [checkInTime, setCheckInTime] = useState(null);
+    const [canReview, setCanReview] = useState(false);
+    const [showReviewForm, setShowReviewForm] = useState(false);
+    const [reviewText, setReviewText] = useState('');
+    const [reviewRating, setReviewRating] = useState(5);
     const [checkingIn, setCheckingIn] = useState(false);
     const [loadingGeo, setLoadingGeo] = useState(true);
     
@@ -83,11 +88,28 @@ export default function Home() {
         return () => clearTimeout(timer);
     }, []);
 
+    // Check if user has been checked in for 30+ minutes
+    useEffect(() => {
+        if (!checkInTime) return;
+        
+        const checkInterval = setInterval(() => {
+            const minutesElapsed = (Date.now() - checkInTime) / (1000 * 60);
+            if (minutesElapsed >= 30 && !canReview) {
+                setCanReview(true);
+                toast.success('You can now leave a review!');
+            }
+        }, 60000); // Check every minute
+
+        return () => clearInterval(checkInterval);
+    }, [checkInTime, canReview]);
+
     const handleCheckIn = async (loc) => {
         setCheckingIn(true);
         setTimeout(() => {
             setCheckingIn(false);
             setCheckedInLocation(loc);
+            setCheckInTime(Date.now());
+            setCanReview(false);
             setSelectedLocation(null);
             toast.success(`Checked in at ${loc.name}`);
         }, 800);
@@ -96,6 +118,22 @@ export default function Home() {
     const handleCheckOut = () => {
         toast.success(`Checked out from ${checkedInLocation.name}`);
         setCheckedInLocation(null);
+        setCheckInTime(null);
+        setCanReview(false);
+        setShowReviewForm(false);
+        setReviewText('');
+        setReviewRating(5);
+    };
+
+    const handleSubmitReview = () => {
+        if (!reviewText.trim()) {
+            toast.error('Please write a review');
+            return;
+        }
+        toast.success('Review submitted!');
+        setShowReviewForm(false);
+        setReviewText('');
+        setReviewRating(5);
     };
 
     // BOUNCER: Check Context
@@ -189,6 +227,67 @@ export default function Home() {
                                 ))}
                             </div>
                         </div>
+
+                        {/* Leave a Review (after 30 min) */}
+                        {canReview && (
+                            <div className="backdrop-blur-xl bg-white/5 rounded-2xl border border-white/10 p-6">
+                                {!showReviewForm ? (
+                                    <Button 
+                                        onClick={() => setShowReviewForm(true)} 
+                                        className="w-full bg-amber-500 hover:bg-amber-600 text-black font-semibold"
+                                    >
+                                        <Star className="w-4 h-4 mr-2" />
+                                        Leave a Review
+                                    </Button>
+                                ) : (
+                                    <div className="space-y-4">
+                                        <h3 className="text-white font-bold">Write Your Review</h3>
+                                        
+                                        <div>
+                                            <p className="text-slate-300 text-sm mb-2">Rating</p>
+                                            <div className="flex gap-2">
+                                                {[1, 2, 3, 4, 5].map((star) => (
+                                                    <button
+                                                        key={star}
+                                                        onClick={() => setReviewRating(star)}
+                                                        className="text-2xl transition-colors"
+                                                    >
+                                                        <Star 
+                                                            className={`w-8 h-8 ${star <= reviewRating ? 'fill-amber-400 text-amber-400' : 'text-slate-600'}`}
+                                                        />
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <Textarea
+                                            value={reviewText}
+                                            onChange={(e) => setReviewText(e.target.value)}
+                                            placeholder="Share your experience..."
+                                            className="bg-white/5 border-white/10 text-white rounded-xl resize-none"
+                                            rows={4}
+                                        />
+
+                                        <div className="flex gap-2">
+                                            <Button 
+                                                onClick={() => setShowReviewForm(false)} 
+                                                variant="outline"
+                                                className="flex-1"
+                                            >
+                                                Cancel
+                                            </Button>
+                                            <Button 
+                                                onClick={handleSubmitReview}
+                                                className="flex-1 bg-amber-500 hover:bg-amber-600 text-black font-semibold"
+                                            >
+                                                <Send className="w-4 h-4 mr-2" />
+                                                Submit
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         {/* People Here (Female users only) */}
                         {isFemale && (
