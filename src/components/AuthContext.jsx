@@ -30,7 +30,7 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     setUser(null);
     localStorage.removeItem('local_user');
-    window.location.href = '/'; 
+    window.location.href = '/auth'; 
   };
 
   return (
