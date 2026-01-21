@@ -33,7 +33,10 @@ export default function Auth() {
             login(mockUser);
             
             toast.success('Signed in (Local Mode)');
-            navigate('/');
+            // Small delay to ensure state propagates
+            setTimeout(() => {
+                navigate('/');
+            }, 100);
         }, 800);
     };
 
