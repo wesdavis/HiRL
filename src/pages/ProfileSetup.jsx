@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { User, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
-import { useAuth } from '@/components/AuthContext';
+import { useAuth } from '@/lib/AuthContext';
 
 export default function ProfileSetup() {
     const { login } = useAuth();
