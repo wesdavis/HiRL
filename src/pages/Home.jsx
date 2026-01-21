@@ -4,7 +4,7 @@ import { MapPin, Zap, ArrowLeft, RefreshCw, Loader2, Search, Navigation, Star, S
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from 'sonner';
-import { useAuth } from '@/components/AuthContext';
+import { useAuth } from '@/lib/AuthContext';
 
  
 import LocationCard from '@/components/location/LocationCard';

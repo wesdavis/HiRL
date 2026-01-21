@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { createPageUrl } from './utils'; 
 import { Home, User } from 'lucide-react';
-import { AuthProvider, useAuth } from '@/components/AuthContext';
+import { AuthProvider, useAuth } from '@/lib/AuthContext';
 
 function LayoutContent({ children }) {
     const location = useLocation();
